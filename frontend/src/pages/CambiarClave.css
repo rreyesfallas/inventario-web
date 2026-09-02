@@ -1,0 +1,81 @@
+.cambiar-clave-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cambiar-clave-card {
+  width: 430px;
+  background: white;
+  padding: 34px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.cambiar-clave-card h1 {
+  text-align: center;
+  margin: 0;
+  font-size: 28px;
+  color: #111827;
+}
+
+.cambiar-clave-card p {
+  text-align: center;
+  margin-top: 10px;
+  margin-bottom: 28px;
+  color: #6b7280;
+  font-weight: bold;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #111827;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.btn-guardar {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-guardar:hover {
+  background: #1d4ed8;
+}
+
+.btn-salir {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-salir:hover {
+  background: #4b5563;
+}
