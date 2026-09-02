@@ -76,7 +76,10 @@ const obtenerInformeCobros = async (req, res) => {
     const totalSaldoActual = Number(resumenCliente.total_saldo_actual || 0);
     const totalCobradoFecha = Number(resumenCobroFecha.total_cobrado_fecha || 0);
     const totalCobradoAcumulado = Number(resumenCobroAcumulado.total_cobrado_acumulado || 0);
-    const saldoPendienteEstimado = totalSaldoActual - totalCobradoAcumulado;
+    const saldoPendienteEstimado = Math.max(
+      totalSaldoActual - totalCobradoAcumulado,
+      0
+    );
 
     res.json({
       resumen: {

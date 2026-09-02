@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './InformeCobros.css';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 function InformeCobros() {
   const navigate = useNavigate();
@@ -103,6 +106,148 @@ function InformeCobros() {
     });
   };
 
+  const formatoMonedaReporte = (valor) => {
+    const numero = Number(valor || 0);
+
+    return `¢${numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
+  const obtenerRolloSeleccionado = () => {
+    const rollo = rollos.find(
+      (item) => Number(item.id_rollo) === Number(filtros.id_rollo)
+    );
+
+    if (!rollo) return '';
+
+    return `${rollo.numero} - ${rollo.descripcion}`;
+  };
+
+  const imprimirInforme = () => {
+    if (!consultado) {
+      alert('Primero debe consultar un informe');
+      return;
+    }
+
+    window.print();
+  };
+
+  const exportarPDF = () => {
+    if (!consultado) {
+      alert('Primero debe consultar un informe');
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    const rolloTexto = obtenerRolloSeleccionado();
+
+    doc.setFontSize(16);
+    doc.text('Sistema de Inventario', 14, 15);
+
+    doc.setFontSize(14);
+    doc.text('Informe de Cobros', 14, 25);
+
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${filtros.fecha}`, 14, 35);
+    doc.text(`Rollo: ${rolloTexto}`, 14, 42);
+
+    autoTable(doc, {
+      startY: 52,
+      head: [['Concepto', 'Monto / Cantidad']],
+      body: [
+        ['Saldo actual del rollo', formatoMonedaReporte(resumen.total_saldo_actual)],
+        ['Efectivo en la fecha', formatoMonedaReporte(resumen.total_efectivo)],
+        ['SINPE en la fecha', formatoMonedaReporte(resumen.total_sinpe)],
+        ['Cobrado en la fecha', formatoMonedaReporte(resumen.total_cobrado_fecha)],
+        ['Cobrado acumulado', formatoMonedaReporte(resumen.total_cobrado_acumulado)],
+        ['Saldo pendiente estimado', formatoMonedaReporte(resumen.saldo_pendiente_estimado)]
+      ]
+    });
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 12,
+      head: [[
+        'Código',
+        'Cédula',
+        'Cliente',
+        'Teléfono',
+        'Rollo',
+        'Saldo actual'
+      ]],
+      body: detalleClientes.map((item) => [
+        item.codigo,
+        item.cedula,
+        item.nombre,
+        item.telefono || '-',
+        `${item.numero_rollo} - ${item.rollo}`,
+        formatoMonedaReporte(item.saldo_actual)
+      ])
+    });
+
+    doc.save(`informe-cobros-${filtros.fecha}.pdf`);
+  };
+
+  const exportarExcel = () => {
+     if (!consultado) {
+    alert('Primero debe consultar un informe');
+    return;
+    }
+
+    const rolloTexto = obtenerRolloSeleccionado();
+
+    const datosResumen = [
+      ['Informe de Cobros'],
+      [],
+      ['Fecha', filtros.fecha],
+      ['Rollo', rolloTexto],
+      [],
+      ['Concepto', 'Monto / Cantidad'],
+      ['Total clientes', resumen.total_clientes],
+      ['Saldo actual del rollo', Number(resumen.total_saldo_actual || 0)],
+      ['Efectivo en la fecha', Number(resumen.total_efectivo || 0)],
+      ['SINPE en la fecha', Number(resumen.total_sinpe || 0)],
+      ['Cobrado en la fecha', Number(resumen.total_cobrado_fecha || 0)],
+      ['Cobrado acumulado', Number(resumen.total_cobrado_acumulado || 0)],
+      ['Saldo pendiente estimado', Number(resumen.saldo_pendiente_estimado || 0)]
+    ];
+
+    const datosDetalle = detalleClientes.map((item) => ({
+      Código: item.codigo,
+      Cédula: item.cedula,
+      Cliente: item.nombre,
+      Teléfono: item.telefono || '',
+      Rollo: `${item.numero_rollo} - ${item.rollo}`,
+      'Saldo actual': Number(item.saldo_actual || 0)
+    }));
+
+    const hojaResumen = XLSX.utils.aoa_to_sheet(datosResumen);
+    const hojaDetalle = XLSX.utils.json_to_sheet(datosDetalle);
+
+    hojaResumen['!cols'] = [
+      { wch: 32 },
+      { wch: 22 }
+    ];
+
+    hojaDetalle['!cols'] = [
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 18 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
+    XLSX.utils.book_append_sheet(libro, hojaDetalle, 'Detalle clientes');
+
+    XLSX.writeFile(libro, `informe-cobros-${filtros.fecha}.xlsx`);
+  };
+
   return (
     <div className="informe-page">
       <header className="informe-header">
@@ -192,6 +337,23 @@ function InformeCobros() {
           <strong>{formatoMoneda(resumen.saldo_pendiente_estimado)}</strong>
         </div>
       </div>
+
+
+      {consultado && (
+        <div className="acciones-reporte">
+          <button className="btn-imprimir" onClick={imprimirInforme}>
+            Imprimir
+          </button>
+
+          <button className="btn-pdf" onClick={exportarPDF}>
+            Exportar PDF
+          </button>
+
+          <button className="btn-excel" onClick={exportarExcel}>
+            Exportar Excel
+          </button>
+        </div>
+      )}
       </section>
 
       <section className="informe-card">
@@ -235,6 +397,8 @@ function InformeCobros() {
           </table>
         </div>
       </section>
+
+      
     </div>
   );
 }
