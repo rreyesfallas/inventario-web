@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './Transacciones.css';
 
 function Transacciones() {
@@ -266,6 +269,110 @@ function Transacciones() {
       currency: 'CRC'
     });
   };
+  const formatoMonedaReporte = (valor) => {
+    const numero = Number(valor || 0);
+
+    return `¢${numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
+  const imprimirMovimientos = () => {
+    if (movimientosFiltrados.length === 0) {
+      alert('No hay movimientos para imprimir');
+      return;
+    }
+
+    window.print();
+  };
+
+  const exportarPDFMovimientos = () => {
+    if (movimientosFiltrados.length === 0) {
+      alert('No hay movimientos para exportar');
+      return;
+    }
+
+    const doc = new jsPDF('landscape');
+
+    doc.setFontSize(16);
+    doc.text('Sistema de Inventario', 14, 15);
+
+    doc.setFontSize(14);
+    doc.text('Reporte de Transacciones', 14, 25);
+
+    doc.setFontSize(10);
+    doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-CR')}`, 14, 35);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [[
+        'Fecha',
+        'Código',
+        'Cliente',
+        'Tipo',
+        'Monto',
+        'Saldo anterior',
+        'Saldo nuevo',
+        'Observación'
+      ]],
+      body: movimientosFiltrados.map((item) => [
+        item.fecha ? new Date(item.fecha).toLocaleDateString('es-CR') : '-',
+        item.codigo_cliente || '-',
+        item.cliente || '-',
+        item.tipo_movimiento || '-',
+        formatoMonedaReporte(item.monto),
+        formatoMonedaReporte(item.saldo_anterior),
+        formatoMonedaReporte(item.saldo_nuevo),
+        item.observacion || '-'
+      ]),
+      styles: {
+        fontSize: 8
+      },
+      headStyles: {
+        fontSize: 8
+      }
+    });
+
+    doc.save('reporte-transacciones.pdf');
+  };
+
+  const exportarExcelMovimientos = () => {
+    if (movimientosFiltrados.length === 0) {
+      alert('No hay movimientos para exportar');
+      return;
+    }
+
+    const datosMovimientos = movimientosFiltrados.map((item) => ({
+      Fecha: item.fecha ? new Date(item.fecha).toLocaleDateString('es-CR') : '',
+      Codigo: item.codigo_cliente || '',
+      Cliente: item.cliente || '',
+      Tipo: item.tipo_movimiento || '',
+      Monto: Number(item.monto || 0),
+      SaldoAnterior: Number(item.saldo_anterior || 0),
+      SaldoNuevo: Number(item.saldo_nuevo || 0),
+      Observacion: item.observacion || ''
+    }));
+
+    const hojaMovimientos = XLSX.utils.json_to_sheet(datosMovimientos);
+
+    hojaMovimientos['!cols'] = [
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 30 },
+      { wch: 24 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 45 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(libro, hojaMovimientos, 'Transacciones');
+
+    XLSX.writeFile(libro, 'reporte-transacciones.xlsx');
+  };
 
   return (
     <div className="transacciones-page">
@@ -470,6 +577,20 @@ function Transacciones() {
             </button>
 
             <h3>Vista de movimientos de clientes</h3>
+
+            <div className="acciones-reporte">
+              <button className="btn-imprimir" onClick={imprimirMovimientos}>
+                Imprimir
+              </button>
+
+              <button className="btn-pdf" onClick={exportarPDFMovimientos}>
+                Exportar PDF
+              </button>
+
+              <button className="btn-excel" onClick={exportarExcelMovimientos}>
+                Exportar Excel
+              </button>
+            </div>
 
             <input
               type="text"
