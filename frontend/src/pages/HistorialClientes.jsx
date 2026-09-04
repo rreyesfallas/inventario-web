@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './HistorialClientes.css';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 function HistorialClientes() {
   const navigate = useNavigate();
@@ -14,6 +17,7 @@ function HistorialClientes() {
 
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [busquedaHistorial, setBusquedaHistorial] = useState('');
+  
 
   const cargarClientes = async () => {
     try {
@@ -87,6 +91,145 @@ function HistorialClientes() {
     return new Date(fecha).toLocaleDateString('es-CR');
   };
 
+  const formatoMonedaReporte = (valor) => {
+  const numero = Number(valor || 0);
+
+  return `¢${numero.toLocaleString('es-CR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+};
+
+const imprimirHistorial = () => {
+  if (!clienteSeleccionado) {
+    alert('Primero debe seleccionar un cliente');
+    return;
+  }
+
+  window.print();
+};
+
+const exportarPDF = () => {
+  if (!clienteSeleccionado) {
+    alert('Primero debe seleccionar un cliente');
+    return;
+  }
+
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text('Sistema de Inventario', 14, 15);
+
+  doc.setFontSize(14);
+  doc.text('Historial de Cliente', 14, 25);
+
+  doc.setFontSize(10);
+  doc.text(`Código: ${clienteSeleccionado.codigo}`, 14, 35);
+  doc.text(`Cliente: ${clienteSeleccionado.nombre}`, 14, 42);
+  doc.text(
+    `Rollo: ${clienteSeleccionado.numero_rollo || ''} - ${clienteSeleccionado.rollo || ''}`,
+    14,
+    49
+  );
+  doc.text(
+    `Saldo actual: ${formatoMonedaReporte(clienteSeleccionado.saldo_actual)}`,
+    14,
+    56
+  );
+
+  autoTable(doc, {
+    startY: 66,
+    head: [[
+      'Fecha',
+      'Tipo',
+      'Monto',
+      'Saldo anterior',
+      'Saldo nuevo',
+      'Cliente relacionado',
+      'Observación'
+    ]],
+    body: historialFiltrado.map((item) => [
+      item.fecha
+        ? new Date(item.fecha).toLocaleDateString('es-CR')
+        : '-',
+      item.tipo_movimiento,
+      formatoMonedaReporte(item.monto),
+      formatoMonedaReporte(item.saldo_anterior),
+      formatoMonedaReporte(item.saldo_nuevo),
+      item.cliente_relacionado
+        ? `${item.codigo_cliente_relacionado} - ${item.cliente_relacionado}`
+        : '-',
+      item.observacion || '-'
+    ]),
+    styles: {
+      fontSize: 8
+    },
+    headStyles: {
+      fontSize: 8
+    }
+  });
+
+  doc.save(`historial-cliente-${clienteSeleccionado.codigo}.pdf`);
+};
+
+  const exportarExcel = () => {
+    if (!clienteSeleccionado) {
+      alert('Primero debe seleccionar un cliente');
+      return;
+    }
+
+    const datosResumen = [
+      ['Historial de Cliente'],
+      [],
+      ['Código', clienteSeleccionado.codigo],
+      ['Cliente', clienteSeleccionado.nombre],
+      [
+        'Rollo',
+        `${clienteSeleccionado.numero_rollo || ''} - ${clienteSeleccionado.rollo || ''}`
+      ],
+      ['Saldo actual', Number(clienteSeleccionado.saldo_actual || 0)]
+    ];
+
+    const datosMovimientos = historialFiltrado.map((item) => ({
+      Fecha: item.fecha
+        ? new Date(item.fecha).toLocaleDateString('es-CR')
+        : '',
+      Tipo: item.tipo_movimiento,
+      Monto: Number(item.monto || 0),
+      SaldoAnterior: Number(item.saldo_anterior || 0),
+      SaldoNuevo: Number(item.saldo_nuevo || 0),
+      ClienteRelacionado: item.cliente_relacionado
+        ? `${item.codigo_cliente_relacionado} - ${item.cliente_relacionado}`
+        : '',
+      Observacion: item.observacion || ''
+    }));
+
+    const hojaResumen = XLSX.utils.aoa_to_sheet(datosResumen);
+    const hojaMovimientos = XLSX.utils.json_to_sheet(datosMovimientos);
+
+    hojaResumen['!cols'] = [
+      { wch: 22 },
+      { wch: 35 }
+    ];
+
+    hojaMovimientos['!cols'] = [
+      { wch: 14 },
+      { wch: 24 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 32 },
+      { wch: 45 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
+    XLSX.utils.book_append_sheet(libro, hojaMovimientos, 'Movimientos');
+
+    XLSX.writeFile(libro, `historial-cliente-${clienteSeleccionado.codigo}.xlsx`);
+  };
+
   return (
     <div className="historial-page">
       <header className="historial-header">
@@ -132,6 +275,22 @@ function HistorialClientes() {
           </p>
         </div>
       </section>
+
+        {clienteSeleccionado && (
+          <section className="historial-card acciones-reporte">
+            <button className="btn-imprimir" onClick={imprimirHistorial}>
+              Imprimir
+            </button>
+
+            <button className="btn-pdf" onClick={exportarPDF}>
+              Exportar PDF
+            </button>
+
+            <button className="btn-excel" onClick={exportarExcel}>
+              Exportar Excel
+            </button>
+          </section>
+      )}
 
       <section className="historial-card">
         <h3>Movimientos del cliente</h3>
@@ -188,6 +347,8 @@ function HistorialClientes() {
           </table>
         </div>
       </section>
+
+
 
       {modalClientesAbierto && (
         <div className="modal-fondo">

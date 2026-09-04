@@ -176,3 +176,61 @@ td {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.acciones-reporte {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.acciones-reporte button {
+  border: none;
+  border-radius: 6px;
+  padding: 11px 20px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-imprimir {
+  background: #374151;
+}
+
+.btn-imprimir:hover {
+  background: #1f2937;
+}
+
+.btn-pdf {
+  background: #dc2626;
+}
+
+.btn-pdf:hover {
+  background: #b91c1c;
+}
+
+.btn-excel {
+  background: #15803d;
+}
+
+.btn-excel:hover {
+  background: #166534;
+}
+
+@media print {
+  .historial-header button,
+  .historial-acciones,
+  .acciones-reporte {
+    display: none;
+  }
+
+  .historial-page {
+    background: white;
+    padding: 0;
+  }
+
+  .historial-card {
+    box-shadow: none;
+    border: none;
+    margin-top: 10px;
+  }
+}
