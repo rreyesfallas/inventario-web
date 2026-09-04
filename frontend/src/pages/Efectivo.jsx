@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './Efectivo.css';
 
 function Efectivo() {
@@ -233,6 +236,138 @@ function Efectivo() {
       style: 'currency',
       currency: 'CRC'
     });
+  };
+
+  const formatoMonedaReporte = (valor) => {
+    const numero = Number(valor || 0);
+
+    return `¢${numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
+  const imprimirDetalleCobro = () => {
+    if (!cobroSeleccionado) {
+      alert('Primero debe seleccionar un cobro');
+      return;
+    }
+
+    window.print();
+  };
+
+  const exportarPDFDetalleCobro = () => {
+    if (!cobroSeleccionado) {
+      alert('Primero debe seleccionar un cobro');
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text('Sistema de Inventario', 14, 15);
+
+    doc.setFontSize(14);
+    doc.text('Reporte de Cobro de Efectivo', 14, 25);
+
+    doc.setFontSize(10);
+    doc.text(
+      `Fecha: ${new Date(cobroSeleccionado.fecha).toLocaleDateString('es-CR')}`,
+      14,
+      35
+    );
+
+    doc.text(
+      `Rollo: ${cobroSeleccionado.numero_rollo} - ${cobroSeleccionado.rollo}`,
+      14,
+      42
+    );
+
+    doc.text(
+      `Total efectivo: ${formatoMonedaReporte(cobroSeleccionado.total_efectivo)}`,
+      14,
+      49
+    );
+
+    doc.text(
+      `Total SINPE: ${formatoMonedaReporte(cobroSeleccionado.total_sinpe)}`,
+      14,
+      56
+    );
+
+    doc.text(
+      `Total general: ${formatoMonedaReporte(cobroSeleccionado.total_general)}`,
+      14,
+      63
+    );
+
+    autoTable(doc, {
+      startY: 73,
+      head: [[
+        'Código',
+        'Empleado',
+        'Efectivo',
+        'SINPE',
+        'Total'
+      ]],
+      body: detalleCobro.map((item) => [
+        item.codigo_empleado,
+        item.empleado,
+        formatoMonedaReporte(item.efectivo),
+        formatoMonedaReporte(item.sinpe),
+        formatoMonedaReporte(item.total)
+      ])
+    });
+
+    doc.save(`cobro-efectivo-${cobroSeleccionado.id_cobro}.pdf`);
+  };
+
+  const exportarExcelDetalleCobro = () => {
+    if (!cobroSeleccionado) {
+      alert('Primero debe seleccionar un cobro');
+      return;
+    }
+
+    const datosResumen = [
+      ['Reporte de Cobro de Efectivo'],
+      [],
+      ['Fecha', new Date(cobroSeleccionado.fecha).toLocaleDateString('es-CR')],
+      ['Rollo', `${cobroSeleccionado.numero_rollo} - ${cobroSeleccionado.rollo}`],
+      ['Total efectivo', Number(cobroSeleccionado.total_efectivo || 0)],
+      ['Total SINPE', Number(cobroSeleccionado.total_sinpe || 0)],
+      ['Total general', Number(cobroSeleccionado.total_general || 0)]
+    ];
+
+    const datosDetalle = detalleCobro.map((item) => ({
+      Código: item.codigo_empleado,
+      Empleado: item.empleado,
+      Efectivo: Number(item.efectivo || 0),
+      SINPE: Number(item.sinpe || 0),
+      Total: Number(item.total || 0)
+    }));
+
+    const hojaResumen = XLSX.utils.aoa_to_sheet(datosResumen);
+    const hojaDetalle = XLSX.utils.json_to_sheet(datosDetalle);
+
+    hojaResumen['!cols'] = [
+      { wch: 24 },
+      { wch: 30 }
+    ];
+
+    hojaDetalle['!cols'] = [
+      { wch: 12 },
+      { wch: 30 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 16 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
+    XLSX.utils.book_append_sheet(libro, hojaDetalle, 'Detalle cobradores');
+
+    XLSX.writeFile(libro, `cobro-efectivo-${cobroSeleccionado.id_cobro}.xlsx`);
   };
 
   return (
@@ -476,7 +611,22 @@ function Efectivo() {
               <p><strong>Fecha:</strong> {new Date(cobroSeleccionado.fecha).toLocaleDateString('es-CR')}</p>
               <p><strong>Rollo:</strong> {cobroSeleccionado.numero_rollo} - {cobroSeleccionado.rollo}</p>
               <p><strong>Total efectivo:</strong> {formatoMoneda(cobroSeleccionado.total_efectivo)}</p>
+              <p><strong>Total SINPE:</strong> {formatoMoneda(cobroSeleccionado.total_sinpe)}</p>
               <p><strong>Total general:</strong> {formatoMoneda(cobroSeleccionado.total_general)}</p>
+            </div>
+
+            <div className="acciones-reporte">
+              <button className="btn-imprimir" onClick={imprimirDetalleCobro}>
+                Imprimir
+              </button>
+
+              <button className="btn-pdf" onClick={exportarPDFDetalleCobro}>
+                Exportar PDF
+              </button>
+
+              <button className="btn-excel" onClick={exportarExcelDetalleCobro}>
+                Exportar Excel
+              </button>
             </div>
 
             <div className="tabla-contenedor">
