@@ -234,9 +234,10 @@ const listarExistencias = async (req, res) => {
         eb.id_bodega,
         b.codigo AS codigo_bodega,
         b.descripcion AS bodega,
-        eb.id_articulo,
         a.codigo AS codigo_articulo,
         a.descripcion AS articulo,
+        a.precio,
+        l.descripcion AS linea,
         eb.existencia,
         eb.fecha_actualizacion
       FROM existencias_bodega eb
@@ -244,8 +245,9 @@ const listarExistencias = async (req, res) => {
         ON eb.id_bodega = b.id_bodega
       INNER JOIN articulos a
         ON eb.id_articulo = a.id_articulo
-      WHERE eb.existencia > 0
-      ORDER BY b.codigo, a.descripcion
+      LEFT JOIN lineas_articulo l
+        ON a.id_linea = l.id_linea
+      ORDER BY b.codigo, a.codigo
     `);
 
     res.json(result.recordset);

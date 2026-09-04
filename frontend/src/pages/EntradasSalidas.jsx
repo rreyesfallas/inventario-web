@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './EntradasSalidas.css';
 
 function EntradasSalidas() {
@@ -9,6 +12,7 @@ function EntradasSalidas() {
   const [articulos, setArticulos] = useState([]);
   const [existencias, setExistencias] = useState([]);
   const [busquedaExistencia, setBusquedaExistencia] = useState('');
+  const [bodegaFiltroExistencia, setBodegaFiltroExistencia] = useState('');
   const [modalExistenciasAbierto, setModalExistenciasAbierto] = useState(false);
   const [modalArticulosAbierto, setModalArticulosAbierto] = useState(false);
   const [busquedaArticuloVista, setBusquedaArticuloVista] = useState('');
@@ -224,12 +228,18 @@ function EntradasSalidas() {
   const existenciasFiltradas = existencias.filter((item) => {
     const texto = busquedaExistencia.toLowerCase();
 
-    return (
+    const coincideBusqueda =
       item.codigo_bodega?.toLowerCase().includes(texto) ||
       item.bodega?.toLowerCase().includes(texto) ||
       item.codigo_articulo?.toLowerCase().includes(texto) ||
-      item.articulo?.toLowerCase().includes(texto)
-    );
+      item.articulo?.toLowerCase().includes(texto) ||
+      item.linea?.toLowerCase().includes(texto);
+
+    const coincideBodega =
+      bodegaFiltroExistencia === '' ||
+      String(item.id_bodega) === String(bodegaFiltroExistencia);
+
+    return coincideBusqueda && coincideBodega;
  });
 
  const movimientosFiltrados = movimientos.filter((item) => {
@@ -318,6 +328,277 @@ function EntradasSalidas() {
     return Number(valor || 0).toLocaleString('es-CR', {
       style: 'currency',
       currency: 'CRC'
+    });
+  };
+
+  const formatoMonedaReporte = (valor) => {
+    const numero = Number(valor || 0);
+
+    return `¢${numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
+  const obtenerBodegaSeleccionada = () => {
+    if (!bodegaFiltroExistencia) {
+      return 'Todas las bodegas';
+    }
+
+    const bodega = bodegas.find(
+      (item) => String(item.id_bodega) === String(bodegaFiltroExistencia)
+    );
+
+    if (!bodega) return 'Todas las bodegas';
+
+    return `${bodega.codigo} - ${bodega.descripcion}`;
+  };
+
+
+  const imprimirDetalleMovimiento = () => {
+    if (!movimientoSeleccionado) {
+      alert('Primero debe seleccionar un movimiento');
+      return;
+    }
+
+    window.print();
+  };
+
+  const exportarPDFDetalleMovimiento = () => {
+    if (!movimientoSeleccionado) {
+      alert('Primero debe seleccionar un movimiento');
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text('Sistema de Inventario', 14, 15);
+
+    doc.setFontSize(14);
+    doc.text('Detalle de Movimiento de Inventario', 14, 25);
+
+    doc.setFontSize(10);
+    doc.text(`Boleta: ${movimientoSeleccionado.numero_boleta}`, 14, 35);
+    doc.text(
+      `Fecha: ${new Date(movimientoSeleccionado.fecha).toLocaleDateString('es-CR')}`,
+      14,
+      42
+    );
+    doc.text(
+      `Bodega: ${movimientoSeleccionado.codigo_bodega} - ${movimientoSeleccionado.bodega}`,
+      14,
+      49
+    );
+    doc.text(`Tipo: ${movimientoSeleccionado.tipo_movimiento_descripcion}`, 14, 56);
+    doc.text(`Total: ${formatoNumeroReporte(movimientoSeleccionado.total)}`, 14, 63);
+
+    autoTable(doc, {
+      startY: 73,
+      head: [[
+        'Código',
+        'Artículo',
+        'Cantidad',
+        'Precio',
+        'Subtotal'
+      ]],
+      body: detalleMovimiento.map((item) => [
+        item.codigo_articulo,
+        item.articulo,
+        Number(item.cantidad || 0).toFixed(2),
+        formatoNumeroReporte(item.precio),
+        formatoNumeroReporte(item.subtotal)
+      ]),
+      styles: {
+        fontSize: 9
+      },
+      headStyles: {
+        fontSize: 9
+      }
+    });
+
+    doc.save(`movimiento-${movimientoSeleccionado.numero_boleta}.pdf`);
+  };
+
+  const exportarExcelDetalleMovimiento = () => {
+    if (!movimientoSeleccionado) {
+      alert('Primero debe seleccionar un movimiento');
+      return;
+    }
+
+    const datosResumen = [
+      ['Detalle de Movimiento de Inventario'],
+      [],
+      ['Boleta', movimientoSeleccionado.numero_boleta],
+      ['Fecha', new Date(movimientoSeleccionado.fecha).toLocaleDateString('es-CR')],
+      ['Bodega', `${movimientoSeleccionado.codigo_bodega} - ${movimientoSeleccionado.bodega}`],
+      ['Tipo', movimientoSeleccionado.tipo_movimiento_descripcion],
+      ['Total', Number(movimientoSeleccionado.total || 0)]
+    ];
+
+    const datosDetalle = detalleMovimiento.map((item) => ({
+      Código: item.codigo_articulo,
+      Artículo: item.articulo,
+      Cantidad: Number(item.cantidad || 0),
+      Precio: Number(item.precio || 0),
+      Subtotal: Number(item.subtotal || 0)
+    }));
+
+    const hojaResumen = XLSX.utils.aoa_to_sheet(datosResumen);
+    const hojaDetalle = XLSX.utils.json_to_sheet(datosDetalle);
+
+    hojaResumen['!cols'] = [
+      { wch: 20 },
+      { wch: 35 }
+    ];
+
+    hojaDetalle['!cols'] = [
+      { wch: 12 },
+      { wch: 35 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
+    XLSX.utils.book_append_sheet(libro, hojaDetalle, 'Detalle');
+
+    XLSX.writeFile(libro, `movimiento-${movimientoSeleccionado.numero_boleta}.xlsx`);
+  };
+
+  const imprimirExistencias = () => {
+    if (existenciasFiltradas.length === 0) {
+      alert('No hay existencias para imprimir');
+      return;
+    }
+
+    window.print();
+  };
+
+  const exportarPDFExistencias = () => {
+    if (existenciasFiltradas.length === 0) {
+        alert('No hay existencias para exportar');
+        return;
+      }
+
+      const doc = new jsPDF('landscape');
+
+      const bodegaTexto = obtenerBodegaSeleccionada();
+
+      doc.setFontSize(16);
+      doc.text('Sistema de Inventario', 14, 15);
+
+      doc.setFontSize(14);
+      doc.text('Reporte de Existencias Según Bodega', 14, 25);
+
+      doc.setFontSize(10);
+      doc.text(`Fecha del reporte: ${new Date().toLocaleDateString('es-CR')}`, 14, 35);
+      doc.text(`Bodega: ${bodegaTexto}`, 14, 42);
+
+      autoTable(doc, {
+        startY: 52,
+        theme: 'striped',
+        margin: { left: 10, right: 10 },
+        head: [[
+          'Cod. Art',
+          'Descripción',
+          'Precio',
+          'Exist.',
+          'Subtotal',
+          'T. Física',
+          'Línea'
+        ]],
+        body: existenciasFiltradas.map((item) => {
+          const precio = Number(item.precio || 0);
+          const existencia = Number(item.existencia || 0);
+          const subtotal = precio * existencia;
+
+          return [
+            item.codigo_articulo,
+            item.articulo,
+            formatoNumeroReporte(precio),
+            existencia.toFixed(2),
+            formatoNumeroReporte(subtotal),
+            '',
+            item.linea || '-'
+          ];
+        }),
+        styles: {
+          fontSize: 9
+        },
+        headStyles: {
+          fontSize: 9
+        }
+      });
+
+      doc.save('reporte-existencias-bodega.pdf');
+  };
+
+  const exportarExcelExistencias = () => {
+    if (existenciasFiltradas.length === 0) {
+        alert('No hay existencias para exportar');
+        return;
+      }
+
+      const bodegaTexto = obtenerBodegaSeleccionada();
+
+      const datosResumen = [
+        ['Reporte de Existencias Según Bodega'],
+        [],
+        ['Fecha del reporte', new Date().toLocaleDateString('es-CR')],
+        ['Bodega', bodegaTexto]
+      ];
+
+      const datosExistencias = existenciasFiltradas.map((item) => {
+        const precio = Number(item.precio || 0);
+        const existencia = Number(item.existencia || 0);
+        const subtotal = precio * existencia;
+
+        return {
+          CodArt: item.codigo_articulo,
+          Descripcion: item.articulo,
+          Precio: precio,
+          Existencia: existencia,
+          Subtotal: subtotal,
+          TFisica: '',
+          Linea: item.linea || ''
+        };
+      });
+
+      const hojaResumen = XLSX.utils.aoa_to_sheet(datosResumen);
+      const hojaExistencias = XLSX.utils.json_to_sheet(datosExistencias);
+
+      hojaResumen['!cols'] = [
+        { wch: 24 },
+        { wch: 35 }
+      ];
+
+      hojaExistencias['!cols'] = [
+        { wch: 14 },
+        { wch: 40 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 16 }
+      ];
+
+      const libro = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
+      XLSX.utils.book_append_sheet(libro, hojaExistencias, 'Existencias');
+
+      XLSX.writeFile(libro, 'reporte-existencias-bodega.xlsx');
+  };
+
+  const formatoNumeroReporte = (valor) => {
+    const numero = Number(valor || 0);
+
+    return numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     });
   };
 
@@ -534,6 +815,34 @@ function EntradasSalidas() {
 
             <h3>Vista de existencias actuales</h3>
 
+            <div className="acciones-reporte">
+              <button className="btn-imprimir" onClick={imprimirExistencias}>
+                Imprimir
+              </button>
+
+              <button className="btn-pdf" onClick={exportarPDFExistencias}>
+                Exportar PDF
+              </button>
+
+              <button className="btn-excel" onClick={exportarExcelExistencias}>
+                Exportar Excel
+              </button>
+            </div>
+
+            <select
+              className="buscar"
+              value={bodegaFiltroExistencia}
+              onChange={(e) => setBodegaFiltroExistencia(e.target.value)}
+            >
+              <option value="">Todas las bodegas</option>
+
+              {bodegas.map((item) => (
+                <option key={item.id_bodega} value={item.id_bodega}>
+                  {item.codigo} - {item.descripcion}
+                </option>
+              ))}
+            </select>
+
             <input
               type="text"
               className="buscar"
@@ -748,6 +1057,20 @@ function EntradasSalidas() {
               <p><strong>Bodega:</strong> {movimientoSeleccionado.codigo_bodega} - {movimientoSeleccionado.bodega}</p>
               <p><strong>Tipo:</strong> {movimientoSeleccionado.tipo_movimiento_descripcion}</p>
               <p><strong>Total:</strong> {formatoMoneda(movimientoSeleccionado.total)}</p>
+            </div>
+
+            <div className="acciones-reporte">
+              <button className="btn-imprimir" onClick={imprimirDetalleMovimiento}>
+                Imprimir
+              </button>
+
+              <button className="btn-pdf" onClick={exportarPDFDetalleMovimiento}>
+                Exportar PDF
+              </button>
+
+              <button className="btn-excel" onClick={exportarExcelDetalleMovimiento}>
+                Exportar Excel
+              </button>
             </div>
 
             <div className="tabla-contenedor">
