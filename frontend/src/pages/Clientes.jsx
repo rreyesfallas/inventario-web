@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './Clientes.css';
 
 function Clientes() {
@@ -11,6 +14,7 @@ function Clientes() {
   const [modoModal, setModoModal] = useState('agregar');
   const [clienteSeleccionado, setClienteSeleccionado] = useState('');
   const [rollos, setRollos] = useState([]);
+  const [rolloReporte, setRolloReporte] = useState('');
   
 
   const [cliente, setCliente] = useState({
@@ -35,6 +39,12 @@ function Clientes() {
       String(item.numero_rollo || '').toLowerCase().includes(texto) ||
       item.rollo?.toLowerCase().includes(texto)
     );
+  });
+
+  const clientesReporte = clientes.filter((item) => {
+    if (!rolloReporte) return false;
+
+    return String(item.id_rollo) === String(rolloReporte);
   });
 
 
@@ -202,6 +212,144 @@ function Clientes() {
     }
   };
 
+  const formatoNumeroReporte = (valor) => {
+    const numero = Number(valor || 0);
+
+    return numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const obtenerRolloReporte = () => {
+    if (!rolloReporte) return '';
+
+    const rollo = rollos.find(
+      (item) => String(item.id_rollo) === String(rolloReporte)
+    );
+
+    if (!rollo) return '';
+
+    return `${rollo.numero} - ${rollo.descripcion}`;
+  };
+
+  const imprimirReporteClientes = () => {
+    if (!rolloReporte) {
+      alert('Seleccione un rollo para generar el reporte');
+      return;
+    }
+
+    if (clientesReporte.length === 0) {
+      alert('No hay clientes para el rollo seleccionado');
+      return;
+    }
+
+    window.print();
+  };
+
+  const exportarPDFClientes = () => {
+    if (!rolloReporte) {
+      alert('Seleccione un rollo para generar el reporte');
+      return;
+    }
+
+    if (clientesReporte.length === 0) {
+      alert('No hay clientes para el rollo seleccionado');
+      return;
+    }
+
+    const doc = new jsPDF('landscape');
+    const rolloTexto = obtenerRolloReporte();
+
+    doc.setFontSize(16);
+    doc.text('Sistema de Inventario', 14, 15);
+
+    doc.setFontSize(14);
+    doc.text('Listado de Clientes Según Rollo', 14, 25);
+
+    doc.setFontSize(10);
+    doc.text(`Fecha del reporte: ${new Date().toLocaleDateString('es-CR')}`, 14, 35);
+    doc.text(`Rollo: ${rolloTexto}`, 14, 42);
+
+    autoTable(doc, {
+      startY: 52,
+      theme: 'striped',
+      margin: { left: 10, right: 10 },
+      head: [[
+        'Código',
+        'Cédula',
+        'Nombre',
+        'Dirección',
+        'Teléfono',
+        'Saldo'
+      ]],
+      body: clientesReporte.map((item) => [
+        item.codigo || '-',
+        item.cedula || '-',
+        item.nombre || '-',
+        item.direccion || '-',
+        item.telefono || '-',
+        formatoNumeroReporte(item.saldo_actual)
+      ]),
+      styles: {
+        fontSize: 8
+      },
+      headStyles: {
+        fontSize: 8
+      }
+    });
+
+    doc.save(`clientes-rollo-${rolloTexto}.pdf`);
+  };
+
+  const exportarExcelClientes = () => {
+    if (!rolloReporte) {
+        alert('Seleccione un rollo para generar el reporte');
+        return;
+      }
+
+      if (clientesReporte.length === 0) {
+        alert('No hay clientes para el rollo seleccionado');
+        return;
+      }
+
+      const rolloTexto = obtenerRolloReporte();
+
+      const datosExcel = [
+        ['Listado de Clientes Según Rollo'],
+        [],
+        ['Fecha del reporte', new Date().toLocaleDateString('es-CR')],
+        ['Rollo', rolloTexto],
+        [],
+        ['Código', 'Cédula', 'Nombre', 'Dirección', 'Teléfono', 'Saldo'],
+        ...clientesReporte.map((item) => [
+          item.codigo || '',
+          item.cedula || '',
+          item.nombre || '',
+          item.direccion || '',
+          item.telefono || '',
+          Number(item.saldo_actual || 0)
+        ])
+      ];
+
+      const hoja = XLSX.utils.aoa_to_sheet(datosExcel);
+
+      hoja['!cols'] = [
+        { wch: 12 },
+        { wch: 16 },
+        { wch: 32 },
+        { wch: 50 },
+        { wch: 16 },
+        { wch: 16 }
+      ];
+
+      const libro = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(libro, hoja, 'Clientes por rollo');
+
+      XLSX.writeFile(libro, `clientes-rollo-${rolloTexto}.xlsx`);
+  };
+
   return (
     <div className="clientes-page">
       <header className="clientes-header">
@@ -211,6 +359,37 @@ function Clientes() {
 
       <section className="clientes-actions">
         <button onClick={abrirModalAgregar}>Agregar</button>
+      </section>
+
+      <section className="clientes-lista reporte-clientes">
+        <h3>Reporte de clientes por rollo</h3>
+
+        <div className="reporte-controles">
+          <select
+            value={rolloReporte}
+            onChange={(e) => setRolloReporte(e.target.value)}
+          >
+            <option value="">Seleccione un rollo</option>
+
+            {rollos.map((item) => (
+              <option key={item.id_rollo} value={item.id_rollo}>
+                {item.numero} - {item.descripcion}
+              </option>
+            ))}
+          </select>
+
+          <button className="btn-imprimir" onClick={imprimirReporteClientes}>
+            Imprimir
+          </button>
+
+          <button className="btn-pdf" onClick={exportarPDFClientes}>
+            Exportar PDF
+          </button>
+
+          <button className="btn-excel" onClick={exportarExcelClientes}>
+            Exportar Excel
+          </button>
+        </div>
       </section>
 
       <section className="clientes-lista">

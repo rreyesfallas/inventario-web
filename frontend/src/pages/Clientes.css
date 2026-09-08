@@ -246,3 +246,71 @@ tbody tr:hover {
 .modal-botones button:last-child:hover {
   background: #d1d5db;
 }
+
+.reporte-clientes {
+  margin-top: 20px;
+}
+
+.reporte-controles {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.reporte-controles select {
+  padding: 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.reporte-controles button {
+  border: none;
+  border-radius: 6px;
+  padding: 11px 20px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-imprimir {
+  background: #374151;
+}
+
+.btn-imprimir:hover {
+  background: #1f2937;
+}
+
+.btn-pdf {
+  background: #dc2626;
+}
+
+.btn-pdf:hover {
+  background: #b91c1c;
+}
+
+.btn-excel {
+  background: #15803d;
+}
+
+.btn-excel:hover {
+  background: #166534;
+}
+
+@media print {
+  .clientes-header,
+  .clientes-actions,
+  .clientes-lista,
+  .modal-fondo {
+    display: none;
+  }
+
+  .reporte-clientes {
+    display: block;
+  }
+
+  .clientes-page {
+    background: white;
+    padding: 0;
+  }
+}
