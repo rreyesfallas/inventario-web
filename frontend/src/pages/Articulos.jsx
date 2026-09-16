@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './Articulos.css';
 
 function Articulos() {
@@ -213,6 +216,143 @@ function Articulos() {
       }
     };
 
+    const articulosOrdenadosReporte = [...articulos].sort((a, b) => {
+      const codigoA = Number(a.codigo);
+      const codigoB = Number(b.codigo);
+
+      if (!isNaN(codigoA) && !isNaN(codigoB)) {
+        return codigoA - codigoB;
+      }
+
+      return String(a.codigo).localeCompare(String(b.codigo));
+    });
+
+    const formatoNumeroReporte = (valor) => {
+  const numero = Number(valor || 0);
+
+  return numero.toLocaleString('es-CR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
+const formatoFechaReporte = (valor) => {
+    if (!valor) return '-';
+
+    return new Date(valor).toLocaleDateString('es-CR');
+  };
+
+  const exportarPDFArticulos = () => {
+    if (articulosOrdenadosReporte.length === 0) {
+      alert('No hay artículos para generar el reporte');
+      return;
+    }
+
+    const doc = new jsPDF('landscape');
+
+    doc.setFontSize(16);
+    doc.text('Sistema de Inventario', 14, 15);
+
+    doc.setFontSize(14);
+    doc.text('Listado de Artículos General', 14, 25);
+    doc.text('Ordenado por Código', 14, 32);
+
+    doc.setFontSize(10);
+    doc.text(`Fecha del reporte: ${new Date().toLocaleDateString('es-CR')}`, 14, 42);
+
+    autoTable(doc, {
+      startY: 52,
+      theme: 'striped',
+      margin: { left: 10, right: 10 },
+      head: [[
+        'Código',
+        'Descripción',
+        'Precio',
+        'Últ. compra',
+        'Últ. movimiento',
+        'Premio',
+        'Línea'
+      ]],
+      body: articulosOrdenadosReporte.map((item) => [
+        item.codigo || '-',
+        item.descripcion || '-',
+        formatoNumeroReporte(item.precio),
+        formatoFechaReporte(item.ultima_compra),
+        formatoFechaReporte(item.ultimo_movimiento),
+        item.premio || 0,
+        item.linea || '-'
+      ]),
+      styles: {
+        fontSize: 8
+      },
+      headStyles: {
+        fontSize: 8
+      }
+    });
+
+    doc.save('listado-articulos-ordenado-codigo.pdf');
+  };
+
+  const exportarExcelArticulos = () => {
+    if (articulosOrdenadosReporte.length === 0) {
+      alert('No hay artículos para generar el reporte');
+      return;
+    }
+
+    const datosExcel = [
+      ['Listado de Artículos General'],
+      ['Ordenado por Código'],
+      [],
+      ['Fecha del reporte', new Date().toLocaleDateString('es-CR')],
+      [],
+      [
+        'Código',
+        'Descripción',
+        'Precio',
+        'Últ. compra',
+        'Últ. movimiento',
+        'Premio',
+        'Línea'
+      ],
+      ...articulosOrdenadosReporte.map((item) => [
+        item.codigo || '',
+        item.descripcion || '',
+        Number(item.precio || 0),
+        formatoFechaReporte(item.ultima_compra),
+        formatoFechaReporte(item.ultimo_movimiento),
+        item.premio || 0,
+        item.linea || ''
+      ])
+    ];
+
+    const hoja = XLSX.utils.aoa_to_sheet(datosExcel);
+
+    hoja['!cols'] = [
+      { wch: 12 },
+      { wch: 35 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 18 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(libro, hoja, 'Artículos');
+
+    XLSX.writeFile(libro, 'listado-articulos-ordenado-codigo.xlsx');
+  };
+
+  const imprimirReporteArticulos = () => {
+    if (articulosOrdenadosReporte.length === 0) {
+      alert('No hay artículos para imprimir');
+      return;
+    }
+
+    window.print();
+  };
+
   return (
     <div className="articulos-page">
       <header className="articulos-header">
@@ -222,6 +362,24 @@ function Articulos() {
 
       <section className="articulos-actions">
         <button onClick={abrirModalAgregar}>Agregar</button>
+      </section>
+
+      <section className="articulos-reporte">
+        <h3>Reporte de artículos</h3>
+
+        <div className="articulos-reporte-controles">
+          <button className="btn-imprimir" onClick={imprimirReporteArticulos}>
+            Imprimir
+          </button>
+
+          <button className="btn-pdf" onClick={exportarPDFArticulos}>
+            Exportar PDF
+          </button>
+
+          <button className="btn-excel" onClick={exportarExcelArticulos}>
+            Exportar Excel
+          </button>
+        </div>
       </section>
 
       <section className="articulos-lista">

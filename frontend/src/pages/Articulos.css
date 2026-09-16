@@ -272,3 +272,73 @@ th:nth-child(5) {
   min-width: 1150px;
   border-collapse: collapse;
 }
+
+.articulos-reporte {  
+  background: white;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.articulos-reporte h3 {
+  margin-top: 0;
+  text-align: center;
+  color: #1f2937;
+}
+
+.articulos-reporte-controles {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.articulos-reporte-controles button {
+  border: none;
+  border-radius: 6px;
+  padding: 11px 22px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  flex: 0 0 150px;
+}
+
+.articulos-reporte-controles .btn-imprimir,
+.articulos-reporte-controles .btn-pdf,
+.articulos-reporte-controles .btn-excel {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  flex: 0 0 150px;
+}
+
+.btn-imprimir {
+  background: #374151;
+}
+
+.btn-imprimir:hover {
+  background: #1f2937;
+}
+
+.btn-pdf {
+  background: #dc2626;
+}
+
+.btn-pdf:hover {
+  background: #b91c1c;
+}
+
+.btn-excel {
+  background: #15803d;
+}
+
+.btn-excel:hover {
+  background: #166534;
+}
