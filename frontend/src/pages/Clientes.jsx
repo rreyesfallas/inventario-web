@@ -19,6 +19,9 @@ function Clientes() {
   const [filtroRollo, setFiltroRollo] = useState('');
   const [filtroZona, setFiltroZona] = useState('');
   const [filtroSaldo, setFiltroSaldo] = useState('');
+
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
     
 
   const [cliente, setCliente] = useState({
@@ -66,6 +69,29 @@ function Clientes() {
 
     return coincideBusqueda && coincideRollo && coincideZona && coincideSaldo;
   });
+
+  const totalPaginas = Math.ceil(clientesFiltrados.length / registrosPorPagina);
+
+  const indiceInicial = (paginaActual - 1) * registrosPorPagina;
+  const indiceFinal = indiceInicial + registrosPorPagina;
+
+  const clientesPaginados = clientesFiltrados.slice(indiceInicial, indiceFinal);
+
+  const irPaginaAnterior = () => {
+    if (paginaActual > 1) {
+      setPaginaActual(paginaActual - 1);
+    }
+  };
+
+  const irPaginaSiguiente = () => {
+    if (paginaActual < totalPaginas) {
+      setPaginaActual(paginaActual + 1);
+    }
+  };
+
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, filtroRollo, filtroZona, filtroSaldo, registrosPorPagina]);
 
   const clientesReporte = clientes.filter((item) => {
     if (!rolloReporte) return false;
@@ -495,7 +521,7 @@ function Clientes() {
             </thead>
 
             <tbody>
-              {clientesFiltrados.map((item) => (
+              {clientesPaginados.map((item) => (
                 <tr key={item.id_cliente}>
                   <td>{item.codigo}</td>
                   <td>{item.cedula}</td>
@@ -534,6 +560,50 @@ function Clientes() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="paginacion-tabla">
+          <div className="paginacion-info">
+            <span>
+              Mostrando {clientesFiltrados.length === 0 ? 0 : indiceInicial + 1}
+              {' '}a{' '}
+              {Math.min(indiceFinal, clientesFiltrados.length)}
+              {' '}de{' '}
+              {clientesFiltrados.length}
+              {' '}clientes
+            </span>
+          </div>
+
+          <div className="paginacion-controles">
+            <select
+              value={registrosPorPagina}
+              onChange={(e) => setRegistrosPorPagina(Number(e.target.value))}
+            >
+              <option value={10}>10 por página</option>
+              <option value={25}>25 por página</option>
+              <option value={50}>50 por página</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={irPaginaAnterior}
+              disabled={paginaActual === 1}
+            >
+              Anterior
+            </button>
+
+            <span>
+              Página {clientesFiltrados.length === 0 ? 0 : paginaActual} de {totalPaginas || 0}
+            </span>
+
+            <button
+              type="button"
+              onClick={irPaginaSiguiente}
+              disabled={paginaActual >= totalPaginas || totalPaginas === 0}
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </section>
 
