@@ -472,3 +472,56 @@ tbody tr:hover {
     padding: 0;
   }
 }
+
+.clientes-filtros {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.clientes-filtros select {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  box-sizing: border-box;
+  font-size: 15px;
+  color: #111827;
+  outline: none;
+  background: white;
+  transition: all 0.18s ease;
+}
+
+.clientes-filtros select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+
+.btn-limpiar-filtros {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 18px;
+  background: #6b7280;
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-limpiar-filtros:hover {
+  background: #4b5563;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 900px) {
+  .clientes-filtros {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .clientes-filtros {
+    grid-template-columns: 1fr;
+  }
+}

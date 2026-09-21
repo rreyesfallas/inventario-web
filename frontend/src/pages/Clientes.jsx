@@ -15,7 +15,11 @@ function Clientes() {
   const [clienteSeleccionado, setClienteSeleccionado] = useState('');
   const [rollos, setRollos] = useState([]);
   const [rolloReporte, setRolloReporte] = useState('');
-  
+
+  const [filtroRollo, setFiltroRollo] = useState('');
+  const [filtroZona, setFiltroZona] = useState('');
+  const [filtroSaldo, setFiltroSaldo] = useState('');
+    
 
   const [cliente, setCliente] = useState({
     codigo: '',
@@ -29,16 +33,38 @@ function Clientes() {
     telefono: ''
   });
 
+  const zonasDisponibles = [
+    ...new Set(
+      clientes
+        .map((item) => item.rollo)
+        .filter((zona) => zona && zona.trim() !== '')
+    )
+  ].sort();
+
   const clientesFiltrados = clientes.filter((item) => {
     const texto = busqueda.toLowerCase();
 
-    return (
+    const coincideBusqueda =
       item.codigo?.toLowerCase().includes(texto) ||
       item.cedula?.toLowerCase().includes(texto) ||
       item.nombre?.toLowerCase().includes(texto) ||
       String(item.numero_rollo || '').toLowerCase().includes(texto) ||
-      item.rollo?.toLowerCase().includes(texto)
-    );
+      item.rollo?.toLowerCase().includes(texto);
+
+    const coincideRollo =
+      !filtroRollo || String(item.id_rollo) === String(filtroRollo);
+
+    const coincideZona =
+      !filtroZona || String(item.rollo || '') === String(filtroZona);
+
+    const saldo = Number(item.saldo_actual || 0);
+
+    const coincideSaldo =
+      !filtroSaldo ||
+      (filtroSaldo === 'CON_SALDO' && saldo > 0) ||
+      (filtroSaldo === 'SIN_SALDO' && saldo === 0);
+
+    return coincideBusqueda && coincideRollo && coincideZona && coincideSaldo;
   });
 
   const clientesReporte = clientes.filter((item) => {
@@ -402,6 +428,56 @@ function Clientes() {
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
+
+        <div className="clientes-filtros">
+          <select
+            value={filtroRollo}
+            onChange={(e) => setFiltroRollo(e.target.value)}
+          >
+            <option value="">Todos los rollos</option>
+
+            {rollos.map((item) => (
+              <option key={item.id_rollo} value={item.id_rollo}>
+                {item.numero} - {item.descripcion}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filtroZona}
+            onChange={(e) => setFiltroZona(e.target.value)}
+          >
+            <option value="">Todas las zonas</option>
+
+            {zonasDisponibles.map((zona) => (
+              <option key={zona} value={zona}>
+                {zona}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filtroSaldo}
+            onChange={(e) => setFiltroSaldo(e.target.value)}
+          >
+            <option value="">Todos los saldos</option>
+            <option value="CON_SALDO">Con saldo</option>
+            <option value="SIN_SALDO">Sin saldo</option>
+          </select>
+
+          <button
+            type="button"
+            className="btn-limpiar-filtros"
+            onClick={() => {
+              setBusqueda('');
+              setFiltroRollo('');
+              setFiltroZona('');
+              setFiltroSaldo('');
+            }}
+          >
+            Limpiar filtros
+          </button>
+        </div>
 
         <div className="tabla-contenedor">
           <table>
