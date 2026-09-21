@@ -108,6 +108,44 @@ function Dashboard() {
     navigate(ruta);
   };
 
+  const [resumen, setResumen] = useState({
+    clientesActivos: 0,
+    articulosActivos: 0,
+    saldoPendiente: 0,
+    cobrosHoy: 0,
+    movimientosInventarioHoy: 0,
+    transaccionesHoy: 0
+  });
+
+  const cargarResumenDashboard = async () => {
+    try {
+      const respuesta = await fetch('http://localhost:3001/api/dashboard/resumen');
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        console.error(datos.mensaje || 'Error al cargar resumen del dashboard');
+        return;
+      }
+
+      setResumen(datos);
+    } catch (error) {
+      console.error('Error cargando resumen del dashboard:', error);
+    }
+  };
+
+  useEffect(() => {
+    cargarResumenDashboard();
+  }, []);
+
+  const formatoMoneda = (valor) => {
+    const numero = Number(valor || 0);
+
+    return `₡${numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -126,6 +164,38 @@ function Dashboard() {
         <section className="dashboard-title">
           <h1>Menú principal</h1>
           <p>Seleccione una opción para continuar.</p>
+        </section>
+
+        <section className="dashboard-resumen">
+          <div className="resumen-card">
+            <span>Clientes activos</span>
+            <strong>{resumen.clientesActivos}</strong>
+          </div>
+
+          <div className="resumen-card">
+            <span>Artículos activos</span>
+            <strong>{resumen.articulosActivos}</strong>
+          </div>
+
+          <div className="resumen-card">
+            <span>Saldo pendiente</span>
+            <strong>{formatoMoneda(resumen.saldoPendiente)}</strong>
+          </div>
+
+          <div className="resumen-card">
+            <span>Cobros de hoy</span>
+            <strong>{formatoMoneda(resumen.cobrosHoy)}</strong>
+          </div>
+
+          <div className="resumen-card">
+            <span>Movimientos inventario hoy</span>
+            <strong>{resumen.movimientosInventarioHoy}</strong>
+          </div>
+
+          <div className="resumen-card">
+            <span>Transacciones hoy</span>
+            <strong>{resumen.transaccionesHoy}</strong>
+          </div>
         </section>
 
         <section className="dashboard-menu">

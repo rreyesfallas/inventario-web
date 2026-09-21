@@ -15,6 +15,7 @@ const transaccionesRoutes = require('./routes/transacciones.routes');
 const informeCobrosRoutes = require('./routes/informeCobros.routes');
 const authRoutes = require('./routes/auth.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/transacciones', transaccionesRoutes);
 app.use('/api/informe-cobros', informeCobrosRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 const PORT = process.env.PORT || 3001;
