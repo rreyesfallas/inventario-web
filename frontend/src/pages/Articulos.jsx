@@ -16,6 +16,11 @@ function Articulos() {
   const [busqueda, setBusqueda] = useState('');
   const [lineas, setLineas] = useState([]);
 
+  const [filtroLinea, setFiltroLinea] = useState('');
+  const [filtroPrecio, setFiltroPrecio] = useState('');
+  const [filtroCompra, setFiltroCompra] = useState('');
+  const [filtroMovimiento, setFiltroMovimiento] = useState('');
+
    const [articulo, setArticulo] = useState({
     codigo: '',
     id_linea: '',
@@ -23,14 +28,41 @@ function Articulos() {
     precio: ''
   });
 
-    const articulosFiltrados = articulos.filter((item) => {
-        const textoBusqueda = busqueda.toLowerCase();
+  const articulosFiltrados = articulos.filter((item) => {
+    const textoBusqueda = busqueda.toLowerCase();
 
-      return (
-          item.codigo.toLowerCase().includes(textoBusqueda) ||
-          item.descripcion.toLowerCase().includes(textoBusqueda)
-      );
-    }); 
+    const coincideBusqueda =
+      String(item.codigo || '').toLowerCase().includes(textoBusqueda) ||
+      String(item.descripcion || '').toLowerCase().includes(textoBusqueda);
+
+    const coincideLinea =
+      !filtroLinea || String(item.id_linea) === String(filtroLinea);
+
+    const precio = Number(item.precio || 0);
+
+    const coincidePrecio =
+      !filtroPrecio ||
+      (filtroPrecio === 'CON_PRECIO' && precio > 0) ||
+      (filtroPrecio === 'SIN_PRECIO' && precio === 0);
+
+    const coincideCompra =
+      !filtroCompra ||
+      (filtroCompra === 'CON_COMPRA' && item.ultima_compra) ||
+      (filtroCompra === 'SIN_COMPRA' && !item.ultima_compra);
+
+    const coincideMovimiento =
+      !filtroMovimiento ||
+      (filtroMovimiento === 'CON_MOVIMIENTO' && item.ultimo_movimiento) ||
+      (filtroMovimiento === 'SIN_MOVIMIENTO' && !item.ultimo_movimiento);
+
+    return (
+      coincideBusqueda &&
+      coincideLinea &&
+      coincidePrecio &&
+      coincideCompra &&
+      coincideMovimiento
+    );
+  });
 // hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
   const desactivarArticulo = async (idArticulo) => {  
     const confirmar = confirm('¿Desea desactivar este artículo?');
@@ -392,6 +424,63 @@ const formatoFechaReporte = (valor) => {
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
         />
+
+        <div className="articulos-filtros">
+          <select
+            value={filtroLinea}
+            onChange={(e) => setFiltroLinea(e.target.value)}
+          >
+            <option value="">Todas las líneas</option>
+
+            {lineas.map((item) => (
+              <option key={item.id_linea} value={item.id_linea}>
+                {item.descripcion}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filtroPrecio}
+            onChange={(e) => setFiltroPrecio(e.target.value)}
+          >
+            <option value="">Todos los precios</option>
+            <option value="CON_PRECIO">Con precio</option>
+            <option value="SIN_PRECIO">Sin precio</option>
+          </select>
+
+          <select
+            value={filtroCompra}
+            onChange={(e) => setFiltroCompra(e.target.value)}
+          >
+            <option value="">Todas las compras</option>
+            <option value="CON_COMPRA">Con última compra</option>
+            <option value="SIN_COMPRA">Sin última compra</option>
+          </select>
+
+          <select
+            value={filtroMovimiento}
+            onChange={(e) => setFiltroMovimiento(e.target.value)}
+          >
+            <option value="">Todos los movimientos</option>
+            <option value="CON_MOVIMIENTO">Con movimiento</option>
+            <option value="SIN_MOVIMIENTO">Sin movimiento</option>
+          </select>
+
+          <button
+            type="button"
+            className="btn-limpiar-filtros"
+            onClick={() => {
+              setBusqueda('');
+              setFiltroLinea('');
+              setFiltroPrecio('');
+              setFiltroCompra('');
+              setFiltroMovimiento('');
+            }}
+          >
+            Limpiar filtros
+          </button>
+        </div>
+
         <div className="tabla-contenedor">
           <table>
             <thead>
