@@ -21,6 +21,9 @@ function Articulos() {
   const [filtroCompra, setFiltroCompra] = useState('');
   const [filtroMovimiento, setFiltroMovimiento] = useState('');
 
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+
    const [articulo, setArticulo] = useState({
     codigo: '',
     id_linea: '',
@@ -63,6 +66,36 @@ function Articulos() {
       coincideMovimiento
     );
   });
+
+  const totalPaginas = Math.ceil(articulosFiltrados.length / registrosPorPagina);
+
+  const indiceInicial = (paginaActual - 1) * registrosPorPagina;
+  const indiceFinal = indiceInicial + registrosPorPagina;
+
+  const articulosPaginados = articulosFiltrados.slice(indiceInicial, indiceFinal);
+
+  const irPaginaAnterior = () => {
+    if (paginaActual > 1) {
+      setPaginaActual(paginaActual - 1);
+    }
+  };
+
+  const irPaginaSiguiente = () => {
+    if (paginaActual < totalPaginas) {
+      setPaginaActual(paginaActual + 1);
+    }
+  };
+
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [
+    busqueda,
+    filtroLinea,
+    filtroPrecio,
+    filtroCompra,
+    filtroMovimiento,
+    registrosPorPagina
+  ]);
 // hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
   const desactivarArticulo = async (idArticulo) => {  
     const confirmar = confirm('¿Desea desactivar este artículo?');
@@ -495,7 +528,7 @@ const formatoFechaReporte = (valor) => {
             </thead>
 
             <tbody>
-                  {articulosFiltrados.map((item) => (
+                  {articulosPaginados.map((item) => (
                       <tr key={item.codigo}>
                       <td>{item.codigo}</td>
                       <td>{item.descripcion}</td>
@@ -531,6 +564,50 @@ const formatoFechaReporte = (valor) => {
                   )}
             </tbody>
           </table>
+        </div>
+        
+        <div className="paginacion-tabla">
+          <div className="paginacion-info">
+            <span>
+              Mostrando {articulosFiltrados.length === 0 ? 0 : indiceInicial + 1}
+              {' '}a{' '}
+              {Math.min(indiceFinal, articulosFiltrados.length)}
+              {' '}de{' '}
+              {articulosFiltrados.length}
+              {' '}artículos
+            </span>
+          </div>
+
+          <div className="paginacion-controles">
+            <select
+              value={registrosPorPagina}
+              onChange={(e) => setRegistrosPorPagina(Number(e.target.value))}
+            >
+              <option value={10}>10 por página</option>
+              <option value={25}>25 por página</option>
+              <option value={50}>50 por página</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={irPaginaAnterior}
+              disabled={paginaActual === 1}
+            >
+              Anterior
+            </button>
+
+            <span>
+              Página {articulosFiltrados.length === 0 ? 0 : paginaActual} de {totalPaginas || 0}
+            </span>
+
+            <button
+              type="button"
+              onClick={irPaginaSiguiente}
+              disabled={paginaActual >= totalPaginas || totalPaginas === 0}
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </section>
 
