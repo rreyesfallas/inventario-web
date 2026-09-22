@@ -24,6 +24,9 @@ function Articulos() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
 
+  const [columnaOrden, setColumnaOrden] = useState('codigo');
+  const [direccionOrden, setDireccionOrden] = useState('asc');
+
    const [articulo, setArticulo] = useState({
     codigo: '',
     id_linea: '',
@@ -67,12 +70,54 @@ function Articulos() {
     );
   });
 
+  const ordenarPor = (columna) => {
+    if (columnaOrden === columna) {
+      setDireccionOrden(direccionOrden === 'asc' ? 'desc' : 'asc');
+    } else {
+      setColumnaOrden(columna);
+      setDireccionOrden('asc');
+    }
+  };
+
+  const obtenerValorOrden = (item, columna) => {
+    if (columna === 'codigo') return Number(item.codigo) || item.codigo || '';
+    if (columna === 'descripcion') return item.descripcion || '';
+    if (columna === 'precio') return Number(item.precio || 0);
+    if (columna === 'ultima_compra') return item.ultima_compra || '';
+    if (columna === 'ultimo_movimiento') return item.ultimo_movimiento || '';
+    if (columna === 'premio') return Number(item.premio || 0);
+    if (columna === 'linea') return item.linea || '';
+
+    return '';
+  };
+
+  const articulosOrdenados = [...articulosFiltrados].sort((a, b) => {
+    const valorA = obtenerValorOrden(a, columnaOrden);
+    const valorB = obtenerValorOrden(b, columnaOrden);
+
+    if (typeof valorA === 'number' && typeof valorB === 'number') {
+      return direccionOrden === 'asc'
+        ? valorA - valorB
+        : valorB - valorA;
+    }
+
+    return direccionOrden === 'asc'
+      ? String(valorA).localeCompare(String(valorB))
+      : String(valorB).localeCompare(String(valorA));
+  });
+
+  const mostrarIndicadorOrden = (columna) => {
+    if (columnaOrden !== columna) return '';
+
+    return direccionOrden === 'asc' ? ' ↑' : ' ↓';
+  };
+
   const totalPaginas = Math.ceil(articulosFiltrados.length / registrosPorPagina);
 
   const indiceInicial = (paginaActual - 1) * registrosPorPagina;
   const indiceFinal = indiceInicial + registrosPorPagina;
 
-  const articulosPaginados = articulosFiltrados.slice(indiceInicial, indiceFinal);
+  const articulosPaginados = articulosOrdenados.slice(indiceInicial, indiceFinal);
 
   const irPaginaAnterior = () => {
     if (paginaActual > 1) {
@@ -94,7 +139,9 @@ function Articulos() {
     filtroPrecio,
     filtroCompra,
     filtroMovimiento,
-    registrosPorPagina
+    registrosPorPagina,
+    columnaOrden,
+    direccionOrden
   ]);
 // hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
   const desactivarArticulo = async (idArticulo) => {  
@@ -518,12 +565,77 @@ const formatoFechaReporte = (valor) => {
           <table>
             <thead>
                   <tr>
-                      <th>Código</th>
-                      <th>Descripción</th>
-                      <th>Precio</th>
-                      <th>Última compra</th>
-                      <th>Último movimiento</th>
-                      <th>Acciones</th>
+                    <th>
+                      <button
+                        type="button"
+                        className="th-ordenable"
+                        onClick={() => ordenarPor('codigo')}
+                      >
+                        Código{mostrarIndicadorOrden('codigo')}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        className="th-ordenable"
+                        onClick={() => ordenarPor('descripcion')}
+                      >
+                        Descripción{mostrarIndicadorOrden('descripcion')}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        className="th-ordenable"
+                        onClick={() => ordenarPor('precio')}
+                      >
+                        Precio{mostrarIndicadorOrden('precio')}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        className="th-ordenable"
+                        onClick={() => ordenarPor('ultima_compra')}
+                      >
+                        Últ. compra{mostrarIndicadorOrden('ultima_compra')}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        className="th-ordenable"
+                        onClick={() => ordenarPor('ultimo_movimiento')}
+                      >
+                        Últ. movimiento{mostrarIndicadorOrden('ultimo_movimiento')}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        className="th-ordenable"
+                        onClick={() => ordenarPor('premio')}
+                      >
+                        Premio{mostrarIndicadorOrden('premio')}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        className="th-ordenable"
+                        onClick={() => ordenarPor('linea')}
+                      >
+                        Línea{mostrarIndicadorOrden('linea')}
+                      </button>
+                    </th>
+
+                    <th>Acciones</th>
                   </tr>
             </thead>
 
