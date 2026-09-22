@@ -22,6 +22,9 @@ function Clientes() {
 
   const [paginaActual, setPaginaActual] = useState(1);
   const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+
+  const [columnaOrden, setColumnaOrden] = useState('codigo');
+  const [direccionOrden, setDireccionOrden] = useState('asc');
     
 
   const [cliente, setCliente] = useState({
@@ -70,12 +73,54 @@ function Clientes() {
     return coincideBusqueda && coincideRollo && coincideZona && coincideSaldo;
   });
 
+  const ordenarPor = (columna) => {
+    if (columnaOrden === columna) {
+      setDireccionOrden(direccionOrden === 'asc' ? 'desc' : 'asc');
+    } else {
+      setColumnaOrden(columna);
+      setDireccionOrden('asc');
+    }
+  };
+
+  const obtenerValorOrden = (item, columna) => {
+    if (columna === 'codigo') return Number(item.codigo) || item.codigo || '';
+    if (columna === 'cedula') return item.cedula || '';
+    if (columna === 'nombre') return item.nombre || '';
+    if (columna === 'numero_rollo') return Number(item.numero_rollo) || item.numero_rollo || '';
+    if (columna === 'rollo') return item.rollo || '';
+    if (columna === 'telefono') return item.telefono || '';
+    if (columna === 'saldo_actual') return Number(item.saldo_actual || 0);
+
+    return '';
+  };
+
+const clientesOrdenados = [...clientesFiltrados].sort((a, b) => {
+  const valorA = obtenerValorOrden(a, columnaOrden);
+  const valorB = obtenerValorOrden(b, columnaOrden);
+
+  if (typeof valorA === 'number' && typeof valorB === 'number') {
+    return direccionOrden === 'asc'
+      ? valorA - valorB
+      : valorB - valorA;
+  }
+
+  return direccionOrden === 'asc'
+    ? String(valorA).localeCompare(String(valorB))
+    : String(valorB).localeCompare(String(valorA));
+});
+
+const mostrarIndicadorOrden = (columna) => {
+  if (columnaOrden !== columna) return '';
+
+  return direccionOrden === 'asc' ? ' ↑' : ' ↓';
+};
+
   const totalPaginas = Math.ceil(clientesFiltrados.length / registrosPorPagina);
 
   const indiceInicial = (paginaActual - 1) * registrosPorPagina;
   const indiceFinal = indiceInicial + registrosPorPagina;
 
-  const clientesPaginados = clientesFiltrados.slice(indiceInicial, indiceFinal);
+  const clientesPaginados = clientesOrdenados.slice(indiceInicial, indiceFinal);
 
   const irPaginaAnterior = () => {
     if (paginaActual > 1) {
@@ -91,7 +136,15 @@ function Clientes() {
 
   useEffect(() => {
     setPaginaActual(1);
-  }, [busqueda, filtroRollo, filtroZona, filtroSaldo, registrosPorPagina]);
+  }, [
+    busqueda,
+    filtroRollo,
+    filtroZona,
+    filtroSaldo,
+    registrosPorPagina,
+    columnaOrden,
+    direccionOrden
+  ]);
 
   const clientesReporte = clientes.filter((item) => {
     if (!rolloReporte) return false;
@@ -509,13 +562,76 @@ function Clientes() {
           <table>
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Cédula</th>
-                <th>Nombre</th>
-                <th>Rollo</th>
-                <th>Zona</th>
-                <th>Teléfono</th>
-                <th>Saldo</th>
+                <th>
+                  <button
+                    type="button"
+                    className="th-ordenable"
+                    onClick={() => ordenarPor('codigo')}
+                  >
+                    Código{mostrarIndicadorOrden('codigo')}
+                  </button>
+                </th>
+
+                <th>
+                  <button
+                    type="button"
+                    className="th-ordenable"
+                    onClick={() => ordenarPor('cedula')}
+                  >
+                    Cédula{mostrarIndicadorOrden('cedula')}
+                  </button>
+                </th>
+
+                <th>
+                  <button
+                    type="button"
+                    className="th-ordenable"
+                    onClick={() => ordenarPor('nombre')}
+                  >
+                    Nombre{mostrarIndicadorOrden('nombre')}
+                  </button>
+                </th>
+
+                <th>
+                  <button
+                    type="button"
+                    className="th-ordenable"
+                    onClick={() => ordenarPor('numero_rollo')}
+                  >
+                    Rollo{mostrarIndicadorOrden('numero_rollo')}
+                  </button>
+                </th>
+
+                <th>
+                  <button
+                    type="button"
+                    className="th-ordenable"
+                    onClick={() => ordenarPor('rollo')}
+                  >
+                    Zona{mostrarIndicadorOrden('rollo')}
+                  </button>
+                </th>
+
+                <th>
+                  <button
+                    type="button"
+                    className="th-ordenable"
+                    onClick={() => ordenarPor('telefono')}
+                  >
+                    Teléfono{mostrarIndicadorOrden('telefono')}
+                  </button>
+                </th>
+
+                <th>
+                  <button
+                    type="button"
+                    className="th-ordenable"
+                    onClick={() => ordenarPor('saldo_actual')}
+                  >
+                    Saldo{mostrarIndicadorOrden('saldo_actual')}
+                  </button>
+                </th>
+
                 <th>Acciones</th>
               </tr>
             </thead>
