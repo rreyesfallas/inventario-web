@@ -25,6 +25,11 @@ function EntradasSalidas() {
   const [movimientos, setMovimientos] = useState([]);
   const [detalleMovimiento, setDetalleMovimiento] = useState([]); 
   const [busquedaMovimiento, setBusquedaMovimiento] = useState('');
+
+  const [fechaFiltroMovimiento, setFechaFiltroMovimiento] = useState('');
+  const [tipoFiltroMovimiento, setTipoFiltroMovimiento] = useState('');
+  const [bodegaFiltroMovimiento, setBodegaFiltroMovimiento] = useState('');
+
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState(null);
 
 
@@ -242,14 +247,71 @@ function EntradasSalidas() {
     return coincideBusqueda && coincideBodega;
  });
 
- const movimientosFiltrados = movimientos.filter((item) => {
+  const obtenerFechaFiltro = (fecha) => {
+    if (!fecha) return '';
+
+    const fechaTexto = String(fecha);
+
+    // Si viene como 2026-08-16 o 2026-08-16T00:00:00.000Z
+    if (fechaTexto.includes('-')) {
+      return fechaTexto.slice(0, 10);
+    }
+
+    // Si viene como 16/8/2026 o 16/08/2026
+    if (fechaTexto.includes('/')) {
+      const partes = fechaTexto.split('/');
+
+      if (partes.length === 3) {
+        const dia = partes[0].padStart(2, '0');
+        const mes = partes[1].padStart(2, '0');
+        const anio = partes[2];
+
+        return `${anio}-${mes}-${dia}`;
+      }
+    }
+
+    return '';
+  };
+
+  const mostrarFechaMovimiento = (fecha) => {
+    const fechaNormalizada = obtenerFechaFiltro(fecha);
+
+    if (!fechaNormalizada) return '-';
+
+    const [anio, mes, dia] = fechaNormalizada.split('-');
+
+    return `${Number(dia)}/${Number(mes)}/${anio}`;
+  };
+
+  const movimientosFiltrados = movimientos.filter((item) => {
     const texto = busquedaMovimiento.toLowerCase();
 
-    return (
+    const coincideBusqueda =
       item.numero_boleta?.toLowerCase().includes(texto) ||
       item.bodega?.toLowerCase().includes(texto) ||
       item.codigo_bodega?.toLowerCase().includes(texto) ||
-      item.tipo_movimiento_descripcion?.toLowerCase().includes(texto)
+      item.tipo_movimiento_descripcion?.toLowerCase().includes(texto);
+
+    const fechaMovimiento = obtenerFechaFiltro(item.fecha);
+    console.log('Fecha movimiento:', item.fecha, 'Normalizada:', fechaMovimiento, 'Filtro:', fechaFiltroMovimiento);
+
+    const coincideFecha =
+      !fechaFiltroMovimiento || fechaMovimiento === fechaFiltroMovimiento;
+
+    const coincideTipo =
+      !tipoFiltroMovimiento ||
+      item.tipo_movimiento === tipoFiltroMovimiento ||
+      item.tipo_movimiento_descripcion?.toUpperCase() === tipoFiltroMovimiento;
+
+    const coincideBodega =
+      !bodegaFiltroMovimiento ||
+      String(item.id_bodega) === String(bodegaFiltroMovimiento);
+
+    return (
+      coincideBusqueda &&
+      coincideFecha &&
+      coincideTipo &&
+      coincideBodega
     );
   });
 
@@ -601,6 +663,32 @@ function EntradasSalidas() {
       maximumFractionDigits: 2
     });
   };
+  
+  const formatoFechaHora = (valor) => {
+    if (!valor) return '-';
+
+    const texto = String(valor);
+
+    if (texto.includes('T')) {
+      const [fechaParte, horaParteCompleta] = texto.split('T');
+      const [anio, mes, dia] = fechaParte.split('-');
+
+      const horaParte = horaParteCompleta.slice(0, 5);
+
+      return `${dia}/${mes}/${anio}, ${horaParte}`;
+    }
+
+    if (texto.includes(' ')) {
+      const [fechaParte, horaParteCompleta] = texto.split(' ');
+      const [anio, mes, dia] = fechaParte.split('-');
+
+      const horaParte = horaParteCompleta.slice(0, 5);
+
+      return `${dia}/${mes}/${anio}, ${horaParte}`;
+    }
+
+    return texto;
+  };
 
   return (
     <div className="entradas-page">
@@ -870,11 +958,7 @@ function EntradasSalidas() {
                       <td>{item.codigo_articulo}</td>
                       <td>{item.articulo}</td>
                       <td>{Number(item.existencia).toFixed(2)}</td>
-                      <td>
-                        {item.fecha_actualizacion
-                          ? new Date(item.fecha_actualizacion).toLocaleString('es-CR')
-                          : '-'}
-                      </td>
+                      <td>{formatoFechaHora(item.fecha_actualizacion)}</td>         
                     </tr>
                   ))}
 
@@ -994,6 +1078,49 @@ function EntradasSalidas() {
               onChange={(e) => setBusquedaMovimiento(e.target.value)}
             />
 
+            <div className="movimientos-filtros">
+              <input
+                type="date"
+                value={fechaFiltroMovimiento}
+                onChange={(e) => setFechaFiltroMovimiento(e.target.value)}
+              />
+
+              <select
+                value={tipoFiltroMovimiento}
+                onChange={(e) => setTipoFiltroMovimiento(e.target.value)}
+              >
+                <option value="">Todos los tipos</option>
+                <option value="E">Entradas</option>
+                <option value="S">Salidas</option>
+              </select>
+
+              <select
+                value={bodegaFiltroMovimiento}
+                onChange={(e) => setBodegaFiltroMovimiento(e.target.value)}
+              >
+                <option value="">Todas las bodegas</option>
+
+                {bodegas.map((item) => (
+                  <option key={item.id_bodega} value={item.id_bodega}>
+                    {item.codigo} - {item.descripcion}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                className="btn-limpiar-filtros"
+                onClick={() => {
+                  setBusquedaMovimiento('');
+                  setFechaFiltroMovimiento('');
+                  setTipoFiltroMovimiento('');
+                  setBodegaFiltroMovimiento('');
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+
             <div className="tabla-contenedor">
               <table>
                 <thead>
@@ -1011,7 +1138,7 @@ function EntradasSalidas() {
                   {movimientosFiltrados.map((item) => (
                     <tr key={item.id_movimiento}>
                       <td>{item.numero_boleta}</td>
-                      <td>{new Date(item.fecha).toLocaleDateString('es-CR')}</td>
+                      <td>{mostrarFechaMovimiento(item.fecha)}</td>
                       <td>{item.codigo_bodega} - {item.bodega}</td>
                       <td>{item.tipo_movimiento_descripcion}</td>
                       <td>{formatoMoneda(item.total)}</td>
