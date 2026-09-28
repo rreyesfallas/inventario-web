@@ -485,3 +485,55 @@ tbody tr:hover {
     border-radius: 0;
   }
 }
+
+.movimientos-filtros {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+  align-items: end;
+}
+
+.movimientos-filtros div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.movimientos-filtros label {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.movimientos-filtros input,
+.movimientos-filtros select {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  box-sizing: border-box;
+  font-size: 15px;
+  color: #111827;
+  outline: none;
+  background: white;
+  transition: all 0.18s ease;
+}
+
+.movimientos-filtros input:focus,
+.movimientos-filtros select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+
+@media (max-width: 1200px) {
+  .movimientos-filtros {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 750px) {
+  .movimientos-filtros {
+    grid-template-columns: 1fr;
+  }
+}

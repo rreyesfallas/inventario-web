@@ -13,6 +13,13 @@ function Transacciones() {
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [busquedaMovimiento, setBusquedaMovimiento] = useState('');
 
+  const [clienteFiltroMovimiento, setClienteFiltroMovimiento] = useState('');
+  const [tipoFiltroMovimiento, setTipoFiltroMovimiento] = useState('');
+  const [fechaDesdeMovimiento, setFechaDesdeMovimiento] = useState('');
+  const [fechaHastaMovimiento, setFechaHastaMovimiento] = useState('');
+
+  const [ordenFechaMovimiento, setOrdenFechaMovimiento] = useState('DESC');
+
   const [modalClientesAbierto, setModalClientesAbierto] = useState(false);
   const [modalMovimientosAbierto, setModalMovimientosAbierto] = useState(false);
 
@@ -21,6 +28,8 @@ function Transacciones() {
   const [clienteDestinoSeleccionado, setClienteDestinoSeleccionado] = useState(null);
   const [modalClienteDestinoAbierto, setModalClienteDestinoAbierto] = useState(false);
   const [busquedaClienteDestino, setBusquedaClienteDestino] = useState('');
+
+
 
   const [transaccion, setTransaccion] = useState({
     tipo: 'ABONO',
@@ -252,15 +261,87 @@ function Transacciones() {
     return coincideBusqueda && noEsClienteOrigen;
   });
 
+  const obtenerFechaFiltro = (fecha) => {
+    if (!fecha) return '';
+
+    const texto = String(fecha);
+
+    if (texto.includes('T')) {
+      return texto.slice(0, 10);
+    }
+
+    if (texto.includes('-')) {
+      return texto.slice(0, 10);
+    }
+
+    if (texto.includes('/')) {
+      const partes = texto.split('/');
+
+      if (partes.length === 3) {
+        const dia = partes[0].padStart(2, '0');
+        const mes = partes[1].padStart(2, '0');
+        const anio = partes[2];
+
+        return `${anio}-${mes}-${dia}`;
+      }
+    }
+
+    return '';
+  };
+
+  const mostrarFecha = (fecha) => {
+    const fechaNormalizada = obtenerFechaFiltro(fecha);
+
+    if (!fechaNormalizada) return '-';
+
+    const [anio, mes, dia] = fechaNormalizada.split('-');
+
+    return `${Number(dia)}/${Number(mes)}/${anio}`;
+  };
+
   const movimientosFiltrados = movimientos.filter((item) => {
     const texto = busquedaMovimiento.toLowerCase();
 
-    return (
+    const coincideBusqueda =
       item.codigo_cliente?.toLowerCase().includes(texto) ||
       item.cliente?.toLowerCase().includes(texto) ||
       item.tipo_movimiento?.toLowerCase().includes(texto) ||
-      String(item.fecha || '').toLowerCase().includes(texto)
+      String(item.fecha || '').toLowerCase().includes(texto);
+
+    const fechaMovimiento = obtenerFechaFiltro(item.fecha);
+
+    const coincideCliente =
+      !clienteFiltroMovimiento ||
+      String(item.id_cliente) === String(clienteFiltroMovimiento);
+
+    const coincideTipo =
+      !tipoFiltroMovimiento ||
+      String(item.tipo_movimiento || '').toUpperCase() === tipoFiltroMovimiento;
+
+    const coincideFechaDesde =
+      !fechaDesdeMovimiento || fechaMovimiento >= fechaDesdeMovimiento;
+
+    const coincideFechaHasta =
+      !fechaHastaMovimiento || fechaMovimiento <= fechaHastaMovimiento;
+
+    return (
+      coincideBusqueda &&
+      coincideCliente &&
+      coincideTipo &&
+      coincideFechaDesde &&
+      coincideFechaHasta
     );
+  });
+
+  const movimientosOrdenados = [...movimientosFiltrados].sort((a, b) => {
+    const fechaA = obtenerFechaFiltro(a.fecha);
+    const fechaB = obtenerFechaFiltro(b.fecha);
+
+    if (ordenFechaMovimiento === 'DESC') {
+      return fechaB.localeCompare(fechaA);
+    }
+
+    return fechaA.localeCompare(fechaB);
   });
 
   const formatoMoneda = (valor) => {
@@ -316,8 +397,8 @@ function Transacciones() {
         'Saldo nuevo',
         'Observación'
       ]],
-      body: movimientosFiltrados.map((item) => [
-        item.fecha ? new Date(item.fecha).toLocaleDateString('es-CR') : '-',
+      body: movimientosOrdenados.map((item) => [
+        mostrarFecha(item.fecha),
         item.codigo_cliente || '-',
         item.cliente || '-',
         item.tipo_movimiento || '-',
@@ -343,8 +424,8 @@ function Transacciones() {
       return;
     }
 
-    const datosMovimientos = movimientosFiltrados.map((item) => ({
-      Fecha: item.fecha ? new Date(item.fecha).toLocaleDateString('es-CR') : '',
+    const datosMovimientos = movimientosOrdenados.map((item) => ({
+      Fecha: mostrarFecha(item.fecha),
       Codigo: item.codigo_cliente || '',
       Cliente: item.cliente || '',
       Tipo: item.tipo_movimiento || '',
@@ -600,6 +681,82 @@ function Transacciones() {
               onChange={(e) => setBusquedaMovimiento(e.target.value)}
             />
 
+            <div className="movimientos-filtros">
+              <div>
+                <label>Cliente</label>
+                <select
+                  value={clienteFiltroMovimiento}
+                  onChange={(e) => setClienteFiltroMovimiento(e.target.value)}
+                >
+                  <option value="">Todos los clientes</option>
+
+                  {clientes.map((item) => (
+                    <option key={item.id_cliente} value={item.id_cliente}>
+                      {item.codigo} - {item.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label>Tipo</label>
+                <select
+                  value={tipoFiltroMovimiento}
+                  onChange={(e) => setTipoFiltroMovimiento(e.target.value)}
+                >
+                  <option value="">Todos los tipos</option>
+                  <option value="ABONO">Abonos</option>
+                  <option value="VENTA">Ventas</option>
+                  <option value="DEVOLUCION">Devoluciones</option>
+                  <option value="TRANSFERENCIA">Transferencias</option>
+                </select>
+              </div>
+
+              <div>
+                <label>Fecha desde</label>
+                <input
+                  type="date"
+                  value={fechaDesdeMovimiento}
+                  onChange={(e) => setFechaDesdeMovimiento(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label>Fecha hasta</label>
+                <input
+                  type="date"
+                  value={fechaHastaMovimiento}
+                  onChange={(e) => setFechaHastaMovimiento(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label>Orden</label>
+                <select
+                  value={ordenFechaMovimiento}
+                  onChange={(e) => setOrdenFechaMovimiento(e.target.value)}
+                >
+                  <option value="DESC">Más recientes primero</option>
+                  <option value="ASC">Más antiguos primero</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                className="btn-limpiar-filtros"
+                onClick={() => {
+                  setBusquedaMovimiento('');
+                  setClienteFiltroMovimiento('');
+                  setTipoFiltroMovimiento('');
+                  setFechaDesdeMovimiento('');
+                  setFechaHastaMovimiento('');
+                  setOrdenFechaMovimiento('DESC');
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+
             <div className="tabla-contenedor">
               <table>
                 <thead>
@@ -616,9 +773,9 @@ function Transacciones() {
                 </thead>
 
                 <tbody>
-                  {movimientosFiltrados.map((item) => (
+                  {movimientosOrdenados.map((item) => (
                     <tr key={item.id_movimiento_cliente}>
-                      <td>{new Date(item.fecha).toLocaleDateString('es-CR')}</td>
+                      <td>{mostrarFecha(item.fecha)}</td>
                       <td>{item.codigo_cliente}</td>
                       <td>{item.cliente}</td>
                       <td>{item.tipo_movimiento}</td>
