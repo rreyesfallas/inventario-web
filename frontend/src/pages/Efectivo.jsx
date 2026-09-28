@@ -20,6 +20,9 @@ function Efectivo() {
 
   const [busquedaCobro, setBusquedaCobro] = useState('');
 
+  const [fechaFiltroCobro, setFechaFiltroCobro] = useState('');
+  const [rolloFiltroCobro, setRolloFiltroCobro] = useState('');
+
   const [cobro, setCobro] = useState({
     fecha: new Date().toISOString().slice(0, 10),
     id_rollo: ''
@@ -221,14 +224,51 @@ function Efectivo() {
   const totalSinpe = detalle.reduce((acum, item) => acum + item.sinpe, 0);
   const totalGeneral = detalle.reduce((acum, item) => acum + item.total, 0);
 
+  const obtenerFechaFiltro = (fecha) => {
+    if (!fecha) return '';
+
+    const texto = String(fecha);
+
+    if (texto.includes('T')) {
+      return texto.slice(0, 10);
+    }
+
+    if (texto.includes('-')) {
+      return texto.slice(0, 10);
+    }
+
+    if (texto.includes('/')) {
+      const partes = texto.split('/');
+
+      if (partes.length === 3) {
+        const dia = partes[0].padStart(2, '0');
+        const mes = partes[1].padStart(2, '0');
+        const anio = partes[2];
+
+        return `${anio}-${mes}-${dia}`;
+      }
+    }
+
+    return '';
+  };
+
   const cobrosFiltrados = cobros.filter((item) => {
     const texto = busquedaCobro.toLowerCase();
 
-    return (
+    const coincideBusqueda =
       String(item.numero_rollo || '').toLowerCase().includes(texto) ||
       item.rollo?.toLowerCase().includes(texto) ||
-      String(item.fecha || '').toLowerCase().includes(texto)
-    );
+      String(item.fecha || '').toLowerCase().includes(texto);
+
+    const fechaCobro = obtenerFechaFiltro(item.fecha);
+
+    const coincideFecha =
+      !fechaFiltroCobro || fechaCobro === fechaFiltroCobro;
+
+    const coincideRollo =
+      !rolloFiltroCobro || String(item.id_rollo) === String(rolloFiltroCobro);
+
+    return coincideBusqueda && coincideFecha && coincideRollo;
   });
 
   const formatoMoneda = (valor) => {
@@ -271,8 +311,7 @@ function Efectivo() {
     doc.text('Reporte de Cobro de Efectivo', 14, 25);
 
     doc.setFontSize(10);
-    doc.text(
-      `Fecha: ${new Date(cobroSeleccionado.fecha).toLocaleDateString('es-CR')}`,
+    doc.text(`Fecha: ${mostrarFecha(cobroSeleccionado.fecha)}`,
       14,
       35
     );
@@ -331,7 +370,7 @@ function Efectivo() {
     const datosResumen = [
       ['Reporte de Cobro de Efectivo'],
       [],
-      ['Fecha', new Date(cobroSeleccionado.fecha).toLocaleDateString('es-CR')],
+      ['Fecha', mostrarFecha(cobroSeleccionado.fecha)],
       ['Rollo', `${cobroSeleccionado.numero_rollo} - ${cobroSeleccionado.rollo}`],
       ['Total efectivo', Number(cobroSeleccionado.total_efectivo || 0)],
       ['Total SINPE', Number(cobroSeleccionado.total_sinpe || 0)],
@@ -368,6 +407,16 @@ function Efectivo() {
     XLSX.utils.book_append_sheet(libro, hojaDetalle, 'Detalle cobradores');
 
     XLSX.writeFile(libro, `cobro-efectivo-${cobroSeleccionado.id_cobro}.xlsx`);
+  };
+
+  const mostrarFecha = (fecha) => {
+    const fechaNormalizada = obtenerFechaFiltro(fecha);
+
+    if (!fechaNormalizada) return '-';
+
+    const [anio, mes, dia] = fechaNormalizada.split('-');
+
+    return `${Number(dia)}/${Number(mes)}/${anio}`;
   };
 
   return (
@@ -549,6 +598,39 @@ function Efectivo() {
               onChange={(e) => setBusquedaCobro(e.target.value)}
             />
 
+            <div className="cobros-filtros">
+              <input
+                type="date"
+                value={fechaFiltroCobro}
+                onChange={(e) => setFechaFiltroCobro(e.target.value)}
+              />
+
+              <select
+                value={rolloFiltroCobro}
+                onChange={(e) => setRolloFiltroCobro(e.target.value)}
+              >
+                <option value="">Todos los rollos</option>
+
+                {rollos.map((item) => (
+                  <option key={item.id_rollo} value={item.id_rollo}>
+                    {item.numero} - {item.descripcion}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                className="btn-limpiar-filtros"
+                onClick={() => {
+                  setBusquedaCobro('');
+                  setFechaFiltroCobro('');
+                  setRolloFiltroCobro('');
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+
             <div className="tabla-contenedor">
               <table>
                 <thead>
@@ -565,7 +647,7 @@ function Efectivo() {
                 <tbody>
                   {cobrosFiltrados.map((item) => (
                     <tr key={item.id_cobro}>
-                      <td>{new Date(item.fecha).toLocaleDateString('es-CR')}</td>
+                      <td>{mostrarFecha(item.fecha)}</td>
                       <td>{item.numero_rollo} - {item.rollo}</td>
                       <td>{formatoMoneda(item.total_efectivo)}</td>
                       <td>{formatoMoneda(item.total_sinpe)}</td>
