@@ -40,7 +40,7 @@ function Transacciones() {
 
   const cargarClientes = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/clientes');
+      const respuesta = await fetch('/api/clientes');
       const datos = await respuesta.json();
 
       setClientes(datos);
@@ -52,7 +52,7 @@ function Transacciones() {
 
   const cargarMovimientos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/transacciones');
+      const respuesta = await fetch('/api/transacciones');
       const datos = await respuesta.json();
 
       setMovimientos(datos);
@@ -142,7 +142,7 @@ function Transacciones() {
       let body = {};
 
       if (transaccion.tipo === 'ABONO') {
-        endpoint = 'http://localhost:3001/api/transacciones/abono';
+        endpoint = '/api/transacciones/abono';
 
         body = {
           id_cliente: clienteSeleccionado.id_cliente,
@@ -153,7 +153,7 @@ function Transacciones() {
       }
 
       if (transaccion.tipo === 'VENTA') {
-        endpoint = 'http://localhost:3001/api/transacciones/venta';
+        endpoint = '/api/transacciones/venta';
 
         body = {
           id_cliente: clienteSeleccionado.id_cliente,
@@ -164,7 +164,7 @@ function Transacciones() {
       }
 
       if (transaccion.tipo === 'DEVOLUCION') {
-        endpoint = 'http://localhost:3001/api/transacciones/devolucion';
+        endpoint = '/api/transacciones/devolucion';
 
         body = {
           id_cliente: clienteSeleccionado.id_cliente,
@@ -175,7 +175,7 @@ function Transacciones() {
       }
 
       if (transaccion.tipo === 'TRANSFERENCIA') {
-        endpoint = 'http://localhost:3001/api/transacciones/transferencia';
+        endpoint = '/api/transacciones/transferencia';
 
         body = {
           id_cliente_origen: clienteSeleccionado.id_cliente,

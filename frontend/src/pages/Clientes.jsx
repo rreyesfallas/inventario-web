@@ -227,8 +227,8 @@ const mostrarIndicadorOrden = (columna) => {
     try {
       const url =
         modoModal === 'agregar'
-          ? 'http://localhost:3001/api/clientes'
-          : `http://localhost:3001/api/clientes/${clienteSeleccionado}`;
+          ? '/api/clientes'
+          : `/api/clientes/${clienteSeleccionado}`;
 
       const metodo = modoModal === 'agregar' ? 'POST' : 'PUT';
 
@@ -259,7 +259,7 @@ const mostrarIndicadorOrden = (columna) => {
 
   const cargarClientes = async () => {
   try {
-    const respuesta = await fetch('http://localhost:3001/api/clientes');
+    const respuesta = await fetch('/api/clientes');
     const datos = await respuesta.json();
 
     setClientes(datos);
@@ -276,7 +276,7 @@ const mostrarIndicadorOrden = (columna) => {
 
     const cargarRollos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/rollos');
+      const respuesta = await fetch('/api/rollos');
       const datos = await respuesta.json();
 
       setRollos(datos);
@@ -296,7 +296,7 @@ const mostrarIndicadorOrden = (columna) => {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/clientes/${idCliente}/desactivar`,
+        `/api/clientes/${idCliente}/desactivar`,
         {
           method: 'PATCH'
         }

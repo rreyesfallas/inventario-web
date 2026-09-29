@@ -21,7 +21,7 @@ function Rollos() {
 
   const cargarRollos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/rollos');
+      const respuesta = await fetch('/api/rollos');
       const datos = await respuesta.json();
 
       setRollos(datos);
@@ -33,7 +33,7 @@ function Rollos() {
 
   const cargarVehiculos = async () => {
   try {
-    const respuesta = await fetch('http://localhost:3001/api/vehiculos');
+    const respuesta = await fetch('/api/vehiculos');
     const datos = await respuesta.json();
 
     setVehiculos(datos);
@@ -105,8 +105,8 @@ function Rollos() {
     try {
       const url =
         modoModal === 'agregar'
-          ? 'http://localhost:3001/api/rollos'
-          : `http://localhost:3001/api/rollos/${rolloSeleccionado}`;
+          ? '/api/rollos'
+          : `/api/rollos/${rolloSeleccionado}`;
 
       const metodo = modoModal === 'agregar' ? 'POST' : 'PUT';
 
@@ -143,7 +143,7 @@ function Rollos() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/rollos/${idRollo}/desactivar`,
+        `/api/rollos/${idRollo}/desactivar`,
         {
           method: 'PATCH'
         }

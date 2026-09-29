@@ -47,7 +47,7 @@ function CambiarClave() {
     }
 
     try {
-      const respuesta = await fetch('http://localhost:3001/api/auth/cambiar-clave', {
+      const respuesta = await fetch('/api/auth/cambiar-clave', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

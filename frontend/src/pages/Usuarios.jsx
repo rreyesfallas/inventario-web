@@ -27,7 +27,7 @@ function Usuarios() {
 
   const cargarUsuarios = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/usuarios');
+      const respuesta = await fetch('/api/usuarios');
       const datos = await respuesta.json();
 
       setUsuarios(datos);
@@ -100,8 +100,8 @@ function Usuarios() {
 
     try {
       const url = modoModal === 'agregar'
-        ? 'http://localhost:3001/api/usuarios'
-        : `http://localhost:3001/api/usuarios/${usuario.id_usuario}`;
+        ? '/api/usuarios'
+        : `/api/usuarios/${usuario.id_usuario}`;
 
       const metodo = modoModal === 'agregar' ? 'POST' : 'PUT';
 
@@ -156,7 +156,7 @@ function Usuarios() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/usuarios/${item.id_usuario}/desactivar`,
+        `/api/usuarios/${item.id_usuario}/desactivar`,
         {
           method: 'PATCH',
           headers: {
@@ -205,7 +205,7 @@ function Usuarios() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/usuarios/${usuarioClave.id_usuario}/restablecer-clave`,
+        `/api/usuarios/${usuarioClave.id_usuario}/restablecer-clave`,
         {
           method: 'PATCH',
           headers: {

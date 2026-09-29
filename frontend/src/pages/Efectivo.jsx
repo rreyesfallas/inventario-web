@@ -38,7 +38,7 @@ function Efectivo() {
 
   const cargarRollos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/rollos');
+      const respuesta = await fetch('/api/rollos');
       const datos = await respuesta.json();
       setRollos(datos);
     } catch (error) {
@@ -49,7 +49,7 @@ function Efectivo() {
 
   const cargarEmpleados = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/empleados');
+      const respuesta = await fetch('/api/empleados');
       const datos = await respuesta.json();
       setEmpleados(datos);
     } catch (error) {
@@ -60,7 +60,7 @@ function Efectivo() {
 
   const cargarCobros = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/cobros-efectivo');
+      const respuesta = await fetch('/api/cobros-efectivo');
       const datos = await respuesta.json();
       setCobros(datos);
     } catch (error) {
@@ -164,7 +164,7 @@ function Efectivo() {
     }
 
     try {
-      const respuesta = await fetch('http://localhost:3001/api/cobros-efectivo', {
+      const respuesta = await fetch('/api/cobros-efectivo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -206,7 +206,7 @@ function Efectivo() {
   const verDetalleCobro = async (item) => {
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/cobros-efectivo/${item.id_cobro}/detalle`
+        `/api/cobros-efectivo/${item.id_cobro}/detalle`
       );
 
       const datos = await respuesta.json();

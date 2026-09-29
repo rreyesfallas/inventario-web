@@ -20,7 +20,7 @@ function Vehiculos() {
 
   const cargarVehiculos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/vehiculos');
+      const respuesta = await fetch('/api/vehiculos');
       const datos = await respuesta.json();
 
       setVehiculos(datos);
@@ -32,7 +32,7 @@ function Vehiculos() {
 
   const cargarEmpleados = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/empleados');
+      const respuesta = await fetch('/api/empleados');
       const datos = await respuesta.json();
 
       setEmpleados(datos);
@@ -101,8 +101,8 @@ function Vehiculos() {
     try {
       const url =
         modoModal === 'agregar'
-          ? 'http://localhost:3001/api/vehiculos'
-          : `http://localhost:3001/api/vehiculos/${vehiculoSeleccionado}`;
+          ? '/api/vehiculos'
+          : `/api/vehiculos/${vehiculoSeleccionado}`;
 
       const metodo = modoModal === 'agregar' ? 'POST' : 'PUT';
 
@@ -139,7 +139,7 @@ function Vehiculos() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/vehiculos/${idVehiculo}/desactivar`,
+        `/api/vehiculos/${idVehiculo}/desactivar`,
         {
           method: 'PATCH'
         }

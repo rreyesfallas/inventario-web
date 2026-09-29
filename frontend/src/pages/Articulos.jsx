@@ -153,7 +153,7 @@ function Articulos() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/articulos/${idArticulo}/desactivar`,
+        `/api/articulos/${idArticulo}/desactivar`,
         {
           method: 'PATCH'
         }
@@ -243,7 +243,7 @@ function Articulos() {
     }
 //pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
 
-  const respuesta = await fetch('http://localhost:3001/api/articulos', {
+  const respuesta = await fetch('/api/articulos', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -271,7 +271,7 @@ function Articulos() {
 
   } else {
       const respuesta = await fetch(
-        `http://localhost:3001/api/articulos/${codigoSeleccionado}`,
+        `/api/articulos/${codigoSeleccionado}`,
         {
           method: 'PUT',
           headers: {
@@ -301,7 +301,7 @@ function Articulos() {
 
   const cargarArticulos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/articulos');
+      const respuesta = await fetch('/api/articulos');
       const datos = await respuesta.json();
 
       setArticulos(datos);
@@ -318,7 +318,7 @@ function Articulos() {
 
     const cargarLineas = async () => {
       try {
-        const respuesta = await fetch('http://localhost:3001/api/lineas-articulo');
+        const respuesta = await fetch('/api/lineas-articulo');
         const datos = await respuesta.json();
 
         setLineas(datos);

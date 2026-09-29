@@ -71,8 +71,8 @@ function Empleados() {
     try { 
       const url =
         modoModal === 'agregar'
-          ? 'http://localhost:3001/api/empleados'
-          : `http://localhost:3001/api/empleados/${empleadoSeleccionado}`;
+          ? '/api/empleados'
+          : `/api/empleados/${empleadoSeleccionado}`;
 
       const metodo = modoModal === 'agregar' ? 'POST' : 'PUT';
 
@@ -109,7 +109,7 @@ function Empleados() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/empleados/${idEmpleado}/desactivar`,
+        `/api/empleados/${idEmpleado}/desactivar`,
         {
           method: 'PATCH'
         }
@@ -132,7 +132,7 @@ function Empleados() {
 
   const cargarEmpleados = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/empleados');
+      const respuesta = await fetch('/api/empleados');
       const datos = await respuesta.json();
 
       setEmpleados(datos);

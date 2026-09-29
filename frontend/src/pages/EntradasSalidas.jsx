@@ -50,7 +50,7 @@ function EntradasSalidas() {
 
   const cargarBodegas = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/bodegas');
+      const respuesta = await fetch('/api/bodegas');
       const datos = await respuesta.json();
       setBodegas(datos);
     } catch (error) {
@@ -61,7 +61,7 @@ function EntradasSalidas() {
 
   const cargarArticulos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/articulos');
+      const respuesta = await fetch('/api/articulos');
       const datos = await respuesta.json();
       setArticulos(datos);
     } catch (error) {
@@ -72,7 +72,7 @@ function EntradasSalidas() {
 
   const cargarExistencias = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/movimientos-inventario/existencias');
+      const respuesta = await fetch('/api/movimientos-inventario/existencias');
       const datos = await respuesta.json();
 
       setExistencias(datos);
@@ -84,7 +84,7 @@ function EntradasSalidas() {
 
   const cargarMovimientos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/movimientos-inventario');
+      const respuesta = await fetch('/api/movimientos-inventario');
       const datos = await respuesta.json();
 
       setMovimientos(datos);
@@ -97,7 +97,7 @@ function EntradasSalidas() {
   const verDetalleMovimiento = async (item) => {
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/movimientos-inventario/${item.id_movimiento}/detalle`
+        `/api/movimientos-inventario/${item.id_movimiento}/detalle`
       );
 
       const datos = await respuesta.json();
@@ -343,7 +343,7 @@ function EntradasSalidas() {
     }
 
     try {
-      const respuesta = await fetch('http://localhost:3001/api/movimientos-inventario', {
+      const respuesta = await fetch('/api/movimientos-inventario', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

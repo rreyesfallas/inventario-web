@@ -119,7 +119,7 @@ function Dashboard() {
 
   const cargarResumenDashboard = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/dashboard/resumen');
+      const respuesta = await fetch('/api/dashboard/resumen');
       const datos = await respuesta.json();
 
       if (!respuesta.ok) {

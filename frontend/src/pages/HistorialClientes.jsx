@@ -21,7 +21,7 @@ function HistorialClientes() {
 
   const cargarClientes = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/clientes');
+      const respuesta = await fetch('/api/clientes');
       const datos = await respuesta.json();
 
       setClientes(datos);
@@ -34,7 +34,7 @@ function HistorialClientes() {
   const cargarHistorialCliente = async (idCliente) => {
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/transacciones/cliente/${idCliente}`
+        `/api/transacciones/cliente/${idCliente}`
       );
 
       const datos = await respuesta.json();

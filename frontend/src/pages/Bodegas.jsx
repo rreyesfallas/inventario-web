@@ -18,7 +18,7 @@ function Bodegas() {
 
   const cargarBodegas = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/bodegas');
+      const respuesta = await fetch('/api/bodegas');
       const datos = await respuesta.json();
 
       setBodegas(datos);
@@ -83,8 +83,8 @@ function Bodegas() {
     try {
       const url =
         modoModal === 'agregar'
-          ? 'http://localhost:3001/api/bodegas'
-          : `http://localhost:3001/api/bodegas/${bodegaSeleccionada}`;
+          ? '/api/bodegas'
+          : `/api/bodegas/${bodegaSeleccionada}`;
 
       const metodo = modoModal === 'agregar' ? 'POST' : 'PUT';
 
@@ -121,7 +121,7 @@ function Bodegas() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/bodegas/${idBodega}/desactivar`,
+        `/api/bodegas/${idBodega}/desactivar`,
         {
           method: 'PATCH'
         }

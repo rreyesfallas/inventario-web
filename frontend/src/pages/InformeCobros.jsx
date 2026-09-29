@@ -29,7 +29,7 @@ function InformeCobros() {
 
   const cargarRollos = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/rollos');
+      const respuesta = await fetch('/api/rollos');
       const datos = await respuesta.json();
 
       setRollos(datos);
@@ -60,7 +60,7 @@ function InformeCobros() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/informe-cobros?fecha=${filtros.fecha}&id_rollo=${filtros.id_rollo}`
+        `/api/informe-cobros?fecha=${filtros.fecha}&id_rollo=${filtros.id_rollo}`
       );
 
       const datos = await respuesta.json();

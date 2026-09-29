@@ -17,7 +17,7 @@ function LineasArticulo() {
 
   const cargarLineas = async () => {
     try {
-      const respuesta = await fetch('http://localhost:3001/api/lineas-articulo');
+      const respuesta = await fetch('/api/lineas-articulo');
       const datos = await respuesta.json();
 
       setLineas(datos);
@@ -77,8 +77,8 @@ function LineasArticulo() {
     try {
       const url =
         modoModal === 'agregar'
-          ? 'http://localhost:3001/api/lineas-articulo'
-          : `http://localhost:3001/api/lineas-articulo/${lineaSeleccionada}`;
+          ? '/api/lineas-articulo'
+          : `/api/lineas-articulo/${lineaSeleccionada}`;
 
       const metodo = modoModal === 'agregar' ? 'POST' : 'PUT';
 
@@ -115,7 +115,7 @@ function LineasArticulo() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3001/api/lineas-articulo/${idLinea}/desactivar`,
+        `/api/lineas-articulo/${idLinea}/desactivar`,
         {
           method: 'PATCH'
         }
