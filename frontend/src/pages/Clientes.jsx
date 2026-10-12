@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import './Clientes.css';
 
-function Clientes() {
+function Clientes() { 
   const navigate = useNavigate();
 
   const [clientes, setClientes] = useState([]);
@@ -25,6 +25,10 @@ function Clientes() {
 
   const [columnaOrden, setColumnaOrden] = useState('codigo');
   const [direccionOrden, setDireccionOrden] = useState('asc');
+
+  const [textoRollo, setTextoRollo] = useState('');
+
+  const [codigoAutomatico, setCodigoAutomatico] = useState(true);
     
 
   const [cliente, setCliente] = useState({
@@ -38,6 +42,16 @@ function Clientes() {
     id_rollo: '',
     telefono: ''
   });
+
+  const codigoRef = useRef(null);
+  const cedulaRef = useRef(null);
+  const nombreRef = useRef(null);
+  const rolloRef = useRef(null);
+  const direccionRef = useRef(null);
+  const colorCasaRef = useRef(null);
+  const ladoCalleRef = useRef(null);
+  const telefonoRef = useRef(null);
+  const saldoRef = useRef(null);
 
   const zonasDisponibles = [
     ...new Set(
@@ -167,12 +181,25 @@ const mostrarIndicadorOrden = (columna) => {
     });
   };
 
+  const obtenerSiguienteCodigoCliente = () => {
+    const codigosNumericos = clientes
+      .map((item) => Number(item.codigo))
+      .filter((codigo) => !isNaN(codigo));
+
+    if (codigosNumericos.length === 0) {
+      return '1';
+    }
+
+    return String(Math.max(...codigosNumericos) + 1);
+  };
+
   const abrirModalAgregar = () => {
     setModoModal('agregar');
     setClienteSeleccionado('');
+    setCodigoAutomatico(true);
 
     setCliente({
-      codigo: '',
+      codigo: obtenerSiguienteCodigoCliente(),
       cedula: '',
       nombre: '',
       direccion: '',
@@ -183,8 +210,9 @@ const mostrarIndicadorOrden = (columna) => {
       saldo_actual: ''
     });
 
+    setTextoRollo('');
     setModalAbierto(true);
-  };
+  }
 
   const abrirModalModificar = (item) => {
     setModoModal('modificar');
@@ -202,6 +230,16 @@ const mostrarIndicadorOrden = (columna) => {
       saldo_actual: item.saldo_actual || 0
     });
 
+    const rolloEncontrado = rollos.find(
+      (rollo) => String(rollo.id_rollo) === String(item.id_rollo)
+    );
+
+    setTextoRollo(
+      rolloEncontrado
+        ? `${rolloEncontrado.numero} - ${rolloEncontrado.descripcion}`
+        : ''
+    );
+
     setModalAbierto(true);
   };
 
@@ -216,6 +254,45 @@ const mostrarIndicadorOrden = (columna) => {
       ...cliente,
       [name]: value
     });
+  };
+
+
+
+
+  const manejarEnter = (e, siguienteRef) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      siguienteRef.current?.focus();
+    }
+  };
+
+  const seleccionarRolloPorTexto = () => {
+    const texto = textoRollo.trim().toLowerCase();
+
+    const rolloEncontrado = rollos.find((rollo) => {
+      const descripcionCompleta = `${rollo.numero} - ${rollo.descripcion}`.toLowerCase();
+      const numero = String(rollo.numero || '').toLowerCase();
+      const descripcion = String(rollo.descripcion || '').toLowerCase();
+
+      return (
+        descripcionCompleta === texto ||
+        numero === texto ||
+        descripcion === texto
+      );
+    });
+
+    if (rolloEncontrado) {
+      setCliente({
+        ...cliente,
+        id_rollo: rolloEncontrado.id_rollo
+      });
+
+      setTextoRollo(`${rolloEncontrado.numero} - ${rolloEncontrado.descripcion}`);
+      direccionRef.current?.focus();
+    } else {
+      alert('Debe seleccionar un rollo válido');
+      rolloRef.current?.focus();
+    }
   };
 
   const guardarCliente = async () => {
@@ -273,6 +350,14 @@ const mostrarIndicadorOrden = (columna) => {
       cargarClientes();
       cargarRollos();
     }, []);
+
+  useEffect(() => {
+  if (modalAbierto) {
+    setTimeout(() => {
+      codigoRef.current?.focus();
+    }, 100);
+  }
+}, [modalAbierto]);
 
     const cargarRollos = async () => {
     try {
@@ -738,24 +823,61 @@ const mostrarIndicadorOrden = (columna) => {
             
             <div className="modal-form">
 
-               <div>
-                  <label>Código</label>
-                   <input
-                     type="text"
-                     name="codigo"
-                     value={cliente.codigo}
-                     onChange={cambiarDato}
-                     disabled={modoModal === 'modificar'}
+            <div>
+              <label>Código</label>
+
+              {modoModal === 'agregar' && (
+                <div style={{ marginBottom: '8px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                    <input
+                      type="checkbox"
+                      checked={codigoAutomatico}
+                      onChange={(e) => {
+                        const automatico = e.target.checked;
+                        setCodigoAutomatico(automatico);
+
+                        if (automatico) {
+                          setCliente({
+                            ...cliente,
+                            codigo: obtenerSiguienteCodigoCliente()
+                          });
+                        } else {
+                          setCliente({
+                            ...cliente,
+                            codigo: ''
+                          });
+                        }
+
+                        setTimeout(() => {
+                          codigoRef.current?.focus();
+                        }, 100);
+                      }}
                     />
-              </div>
+                    {' '}Código automático
+                  </label>
+                </div>
+              )}
+
+              <input
+                ref={codigoRef}
+                type="text"
+                name="codigo"
+                value={cliente.codigo}
+                onChange={cambiarDato}
+                onKeyDown={(e) => manejarEnter(e, cedulaRef)}
+                disabled={modoModal === 'modificar' || codigoAutomatico}
+              />
+            </div>
 
               <div>
                 <label>Cédula</label>
                 <input
+                  ref={cedulaRef}
                   type="text"
                   name="cedula"
                   value={cliente.cedula}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, nombreRef)}
                   disabled={modoModal === 'modificar'}
                 />
               </div>
@@ -763,57 +885,91 @@ const mostrarIndicadorOrden = (columna) => {
               <div>
                 <label>Nombre</label>
                 <input
+                  ref={nombreRef}
                   type="text"
                   name="nombre"
                   value={cliente.nombre}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, rolloRef)}
                 />
               </div>
 
-              
               <div>
                 <label>Rollo / Zona</label>
-                <select
-                  name="id_rollo"
-                  value={cliente.id_rollo}
-                  onChange={cambiarDato}
-                >
-                  <option value="">Seleccione</option>
+                <input
+                  ref={rolloRef}
+                  type="text"
+                  list="lista-rollos"
+                  value={textoRollo}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setTextoRollo(valor);
 
+                    const rolloEncontrado = rollos.find(
+                      (rollo) => `${rollo.numero} - ${rollo.descripcion}` === valor
+                    );
+
+                    setCliente({
+                      ...cliente,
+                      id_rollo: rolloEncontrado ? rolloEncontrado.id_rollo : ''
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      seleccionarRolloPorTexto();
+                    }
+                  }}
+                  placeholder="Escriba o seleccione un rollo"
+                />
+
+                <datalist id="lista-rollos">
                   {rollos.map((item) => (
-                    <option key={item.id_rollo} value={item.id_rollo}>
-                      {item.numero} - {item.descripcion}
-                    </option>
+                    <option
+                      key={item.id_rollo}
+                      value={`${item.numero} - ${item.descripcion}`}
+                    />
                   ))}
-                </select>
-            </div>
+                </datalist>
+              </div>
 
               <div className="full">
                 <label>Dirección</label>
                 <input
+                  ref={direccionRef}
                   type="text"
                   name="direccion"
                   value={cliente.direccion}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, colorCasaRef)}
                 />
               </div>
 
               <div>
                 <label>Color de casa</label>
                 <input
+                  ref={colorCasaRef}
                   type="text"
                   name="color_casa"
                   value={cliente.color_casa}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, ladoCalleRef)}
                 />
               </div>
 
               <div>
                 <label>Lado de la calle</label>
                 <select
+                  ref={ladoCalleRef}
                   name="lado_calle"
                   value={cliente.lado_calle}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      telefonoRef.current?.focus();
+                    }
+                  }}
                 >
                   <option value="">Seleccione</option>
                   <option value="DERECHO">Derecho</option>
@@ -824,25 +980,35 @@ const mostrarIndicadorOrden = (columna) => {
               <div>
                 <label>Teléfono</label>
                 <input
+                  ref={telefonoRef}
                   type="text"
                   name="telefono"
                   value={cliente.telefono}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, saldoRef)}
                 />
               </div>
 
               <div>
                 <label>Saldo</label>
-            <input
-              type="number"
-              name="saldo_actual"
-              value={cliente.saldo_actual}
-              onChange={cambiarDato}
-              placeholder="Digite saldo inicial"
-              min="0"
-              disabled={modoModal === 'modificar'}
-            />
+                <input
+                  ref={saldoRef}
+                  type="number"
+                  name="saldo_actual"
+                  value={cliente.saldo_actual}
+                  onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      guardarCliente();
+                    }
+                  }}
+                  placeholder="Digite saldo inicial"
+                  min="0"
+                  disabled={modoModal === 'modificar'}
+                />
               </div>
+
             </div>
 
             <div className="modal-botones">
