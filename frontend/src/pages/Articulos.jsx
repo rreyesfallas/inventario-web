@@ -27,6 +27,8 @@ function Articulos() {
   const [columnaOrden, setColumnaOrden] = useState('codigo');
   const [direccionOrden, setDireccionOrden] = useState('asc');
 
+  const [textoLinea, setTextoLinea] = useState('');
+
    const [articulo, setArticulo] = useState({
     codigo: '',
     id_linea: '',
@@ -189,6 +191,7 @@ function Articulos() {
       precio: ''
     });
 
+    setTextoLinea('');
     setModalAbierto(true);
   };
 
@@ -202,6 +205,12 @@ function Articulos() {
       descripcion: item.descripcion,
       precio: item.precio
     });
+
+    const lineaEncontrada = lineas.find(
+      (linea) => String(linea.id_linea) === String(item.id_linea)
+    );
+
+    setTextoLinea(lineaEncontrada ? lineaEncontrada.descripcion : '');
 
     setModalAbierto(true);
   };
@@ -225,6 +234,29 @@ function Articulos() {
     if (e.key === 'Enter') {
       e.preventDefault();
       siguienteRef.current?.focus();
+    }
+  };
+
+  const seleccionarLineaPorTexto = () => {
+    const texto = textoLinea.trim().toLowerCase();
+
+    const lineaEncontrada = lineas.find((linea) => {
+      const descripcion = String(linea.descripcion || '').toLowerCase();
+
+      return descripcion === texto;
+    });
+
+    if (lineaEncontrada) {
+      setArticulo({
+        ...articulo,
+        id_linea: lineaEncontrada.id_linea
+      });
+
+      setTextoLinea(lineaEncontrada.descripcion);
+      descripcionRef.current?.focus();
+    } else {
+      alert('Debe seleccionar una línea válida');
+      lineaRef.current?.focus();
     }
   };
 
@@ -768,26 +800,41 @@ const formatoFechaReporte = (valor) => {
 
               <div>
                 <label>Línea</label>
-                <select
+                <input
                   ref={lineaRef}
-                  name="id_linea"
-                  value={articulo.id_linea}
-                  onChange={cambiarDato}
+                  type="text"
+                  list="lista-lineas"
+                  value={textoLinea}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setTextoLinea(valor);
+
+                    const lineaEncontrada = lineas.find(
+                      (linea) => String(linea.descripcion) === valor
+                    );
+
+                    setArticulo({
+                      ...articulo,
+                      id_linea: lineaEncontrada ? lineaEncontrada.id_linea : ''
+                    });
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      descripcionRef.current?.focus();
+                      seleccionarLineaPorTexto();
                     }
                   }}
-                >
-                  <option value="">Seleccione</option>
+                  placeholder="Escriba o seleccione una línea"
+                />
 
+                <datalist id="lista-lineas">
                   {lineas.map((item) => (
-                    <option key={item.id_linea} value={item.id_linea}>
-                      {item.descripcion}
-                    </option>
+                    <option
+                      key={item.id_linea}
+                      value={item.descripcion}
+                    />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div className="full">
