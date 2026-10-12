@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -33,6 +33,11 @@ function Articulos() {
     descripcion: '',
     precio: ''
   });
+
+  const codigoRef = useRef(null);
+  const lineaRef = useRef(null);
+  const descripcionRef = useRef(null);
+  const precioRef = useRef(null);
 
   const articulosFiltrados = articulos.filter((item) => {
     const textoBusqueda = busqueda.toLowerCase();
@@ -216,6 +221,13 @@ function Articulos() {
     });
   };
 
+  const manejarEnter = (e, siguienteRef) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      siguienteRef.current?.focus();
+    }
+  };
+
   const guardarArticulo = async () => {
   if (articulo.codigo.trim() === '') {
       alert('Debe ingresar el código');
@@ -315,6 +327,15 @@ function Articulos() {
     cargarArticulos();
     cargarLineas();
   }, []);
+
+
+  useEffect(() => {
+    if (modalAbierto) {
+      setTimeout(() => {
+        codigoRef.current?.focus();
+      }, 100);
+    }
+  }, [modalAbierto]);
 
     const cargarLineas = async () => {
       try {
@@ -735,20 +756,29 @@ const formatoFechaReporte = (valor) => {
               <div>
                 <label>Código</label>
                 <input
+                  ref={codigoRef}
                   type="text"
                   name="codigo"
                   value={articulo.codigo}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, lineaRef)}
                   disabled={modoModal === 'modificar'}
                 />
               </div>
 
               <div>
                 <label>Línea</label>
-               <select
+                <select
+                  ref={lineaRef}
                   name="id_linea"
                   value={articulo.id_linea}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      descripcionRef.current?.focus();
+                    }
+                  }}
                 >
                   <option value="">Seleccione</option>
 
@@ -763,20 +793,29 @@ const formatoFechaReporte = (valor) => {
               <div className="full">
                 <label>Descripción</label>
                 <input
+                  ref={descripcionRef}
                   type="text"
                   name="descripcion"
                   value={articulo.descripcion}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, precioRef)}
                 />
               </div>
 
               <div>
                 <label>Precio</label>
                 <input
+                  ref={precioRef}
                   type="number"
                   name="precio"
                   value={articulo.precio}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      guardarArticulo();
+                    }
+                  }}
                 />
               </div>
             </div>
