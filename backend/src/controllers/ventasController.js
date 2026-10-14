@@ -559,8 +559,118 @@ const eliminarVenta = async (req, res) => {
   }
 };
 
+
+const consultarVenta = async (req, res) => {
+  try {
+    const idVenta = Number(req.params.id_venta);
+
+    if (!Number.isInteger(idVenta) || idVenta <= 0) {
+      return res.status(400).json({
+        mensaje: 'El ID de la venta no es válido'
+      });
+    }
+
+    const pool = await getConnection();
+
+    // Consultar el encabezado de la venta
+    const resultadoVenta = await pool.request()
+      .input('id_venta', sql.Int, idVenta)
+      .query(`
+        SELECT
+          v.*,
+          c.codigo AS codigo_cliente,
+          c.nombre AS nombre_cliente,
+          b.codigo AS codigo_bodega,
+          b.descripcion AS nombre_bodega,
+          e.codigo AS codigo_empleado,
+          e.nombre AS nombre_empleado
+        FROM ventas v
+        LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
+        LEFT JOIN bodegas b ON v.id_bodega = b.id_bodega
+        LEFT JOIN empleados e ON v.id_empleado = e.id_empleado
+        WHERE v.id_venta = @id_venta
+      `);
+
+    if (resultadoVenta.recordset.length === 0) {
+      return res.status(404).json({
+        mensaje: 'Venta no encontrada'
+      });
+    }
+
+    // Consultar los artículos de la venta
+    const resultadoDetalle = await pool.request()
+      .input('id_venta', sql.Int, idVenta)
+      .query(`
+        SELECT
+          vd.*,
+          a.codigo AS codigo_articulo,
+          a.descripcion AS nombre_articulo
+        FROM ventas_detalle vd
+        LEFT JOIN articulos a ON vd.id_articulo = a.id_articulo
+        WHERE vd.id_venta = @id_venta
+        ORDER BY vd.id_venta_detalle
+      `);
+
+    res.json({
+      venta: resultadoVenta.recordset[0],
+      detalle: resultadoDetalle.recordset
+    });
+
+  } catch (error) {
+    console.error('Error consultando venta:', error);
+
+    res.status(500).json({
+      mensaje: 'Error al consultar venta',
+      error: error.message
+    });
+  }
+};
+
+
+const consultarVentasPorBoleta = async (req, res) => {
+  try {
+    const { numero_boleta } = req.params;
+
+    const pool = await getConnection();
+
+    const resultado = await pool.request()
+      .input('numero_boleta', sql.VarChar, numero_boleta)
+      .query(`
+        SELECT
+          v.id_venta,
+          v.numero_boleta,
+          v.fecha,
+          v.total,
+          v.estado,
+          v.observacion,
+          c.nombre AS nombre_cliente
+        FROM ventas v
+        LEFT JOIN clientes c
+          ON v.id_cliente = c.id_cliente
+        WHERE v.numero_boleta = @numero_boleta
+        ORDER BY v.id_venta DESC
+      `);
+
+    res.json({
+      ventas: resultado.recordset
+    });
+
+  } catch (error) {
+    console.error('Error consultando ventas por boleta:', error);
+
+    res.status(500).json({
+      mensaje: 'Error al consultar ventas por boleta',
+      error: error.message
+    });
+  }
+};
+
+
+
 module.exports = {
   buscarBoleta,
   registrarVenta,
-  eliminarVenta
+  eliminarVenta,
+  consultarVenta,
+  consultarVentasPorBoleta
 };
