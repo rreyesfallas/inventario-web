@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Empleados.css';
 
@@ -11,11 +11,14 @@ function Empleados() {
   const [modoModal, setModoModal] = useState('agregar');
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
 
-
   const [empleado, setEmpleado] = useState({
     codigo: '',
     nombre: '',
   });
+
+  const codigoRef = useRef(null);
+  const nombreRef = useRef(null);
+  const estadoRef = useRef(null);
 
 
   const limpiarEmpleado = () => {
@@ -32,7 +35,8 @@ function Empleados() {
 
     setEmpleado({
       codigo: '',
-      nombre: ''
+      nombre: '',
+      estado: 'ACTIVO'
     });
 
     setModalAbierto(true);
@@ -44,7 +48,8 @@ function Empleados() {
 
     setEmpleado({
       codigo: item.codigo || '',
-      nombre: item.nombre || ''
+      nombre: item.nombre || '',
+      estado: item.estado || 'ACTIVO'
     });
 
     setModalAbierto(true);
@@ -62,6 +67,14 @@ function Empleados() {
       [name]: value
     });
   };
+
+  const manejarEnter = (e, siguienteRef) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      siguienteRef.current?.focus();
+    }
+  };
+
   const guardarEmpleado = async () => {
     if (!empleado.codigo || !empleado.nombre) {
       alert('Código y nombre son obligatorios');
@@ -145,6 +158,14 @@ function Empleados() {
   useEffect(() => {
     cargarEmpleados();
   }, []);
+
+  useEffect(() => {
+    if (modalAbierto) {
+      setTimeout(() => {
+        codigoRef.current?.focus();
+      }, 100);
+    }
+  }, [modalAbierto]);
 
   const empleadosFiltrados = empleados.filter((item) => {
     const texto = busqueda.toLowerCase();
@@ -253,10 +274,12 @@ function Empleados() {
               <div>
                 <label>Código</label>
                 <input
+                  ref={codigoRef}
                   type="text"
                   name="codigo"
                   value={empleado.codigo}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, nombreRef)}
                   disabled={modoModal === 'modificar'}
                 />
               </div>
@@ -264,19 +287,28 @@ function Empleados() {
               <div>
                 <label>Nombre</label>
                 <input
+                  ref={nombreRef}
                   type="text"
                   name="nombre"
                   value={empleado.nombre}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => manejarEnter(e, estadoRef)}
                 />
               </div>
 
               <div>
                 <label>Estado</label>
                 <select
+                  ref={estadoRef}
                   name="estado"
                   value={empleado.estado}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      guardarEmpleado();
+                    }
+                  }}
                 >
                   <option value="ACTIVO">Activo</option>
                   <option value="INACTIVO">Inactivo</option>

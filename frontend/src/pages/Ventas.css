@@ -1,0 +1,35 @@
+.ventas-page {
+  min-height: 100vh;
+  padding: 32px;
+  background: #eef3fb;
+  color: #111827;
+}
+
+.ventas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.ventas-header h2 {
+  font-size: 36px;
+  margin: 0;
+}
+
+.ventas-header button {
+  background: #111827;
+  color: white;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.ventas-card {
+  background: white;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}

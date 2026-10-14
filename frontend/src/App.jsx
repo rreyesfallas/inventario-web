@@ -17,6 +17,7 @@ import LineasArticulo from './pages/LineasArticulo';
 import Bodegas from './pages/Bodegas';
 import RutaProtegida from './components/RutaProtegida';
 import CambiarClave from './pages/CambiarClave';
+import Ventas from './pages/Ventas';
 
 function App() {
   return (
@@ -74,6 +75,15 @@ function App() {
         element={
           <RutaProtegida>
             <Transacciones />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/transacciones/ventas"
+        element={
+          <RutaProtegida>
+            <Ventas />
           </RutaProtegida>
         }
       />

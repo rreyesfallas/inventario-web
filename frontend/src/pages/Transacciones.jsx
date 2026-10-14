@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -24,6 +24,14 @@ function Transacciones() {
   const [modalMovimientosAbierto, setModalMovimientosAbierto] = useState(false);
 
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+
+  const [textoClienteDirecto, setTextoClienteDirecto] = useState('');
+
+  const buscarClienteRef = useRef(null);
+  const tipoRef = useRef(null);
+  const fechaRef = useRef(null);
+  const montoRef = useRef(null);
+  const observacionRef = useRef(null);
 
   const [clienteDestinoSeleccionado, setClienteDestinoSeleccionado] = useState(null);
   const [modalClienteDestinoAbierto, setModalClienteDestinoAbierto] = useState(false);
@@ -73,6 +81,46 @@ function Transacciones() {
     setBusquedaCliente('');
   };
 
+  const seleccionarClienteDirecto = () => {
+    const texto = textoClienteDirecto.trim().toLowerCase();
+
+    if (!texto) {
+      alert('Digite el código o nombre del cliente');
+      buscarClienteRef.current?.focus();
+      return;
+    }
+
+    const clientesCoincidentes = clientes.filter((item) => {
+      const codigo = String(item.codigo || '').toLowerCase();
+      const nombre = String(item.nombre || '').toLowerCase();
+      const cedula = String(item.cedula || '').toLowerCase();
+
+      return (
+        codigo.includes(texto) ||
+        nombre.includes(texto) ||
+        cedula.includes(texto)
+      );
+    });
+
+    if (clientesCoincidentes.length === 0) {
+      alert('No se encontró ningún cliente con ese código o nombre');
+      buscarClienteRef.current?.focus();
+      return;
+    }
+
+    const clienteExacto =
+      clientesCoincidentes.find(
+        (item) => String(item.codigo || '').toLowerCase() === texto
+      ) || clientesCoincidentes[0];
+
+    setClienteSeleccionado(clienteExacto);
+    setTextoClienteDirecto(`${clienteExacto.codigo} - ${clienteExacto.nombre}`);
+
+    setTimeout(() => {
+      tipoRef.current?.focus();
+    }, 100);
+  };
+
   const seleccionarClienteDestino = (item) => {
     setClienteDestinoSeleccionado(item);
     setModalClienteDestinoAbierto(false);
@@ -89,6 +137,13 @@ function Transacciones() {
 
     if (name === 'tipo' && value !== 'TRANSFERENCIA') {
       setClienteDestinoSeleccionado(null);
+    }
+  };
+
+  const manejarEnter = (e, siguienteRef) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      siguienteRef.current?.focus();
     }
   };
   
@@ -112,13 +167,13 @@ function Transacciones() {
     }
 
     const saldoActual = Number(clienteSeleccionado.saldo_actual || 0);
-
-    if (
-      (transaccion.tipo === 'ABONO' ||
-        transaccion.tipo === 'DEVOLUCION' ||
-        transaccion.tipo === 'TRANSFERENCIA') &&
-      monto > saldoActual
-    ) {
+      if (
+        (transaccion.tipo === 'ABONO' ||
+          transaccion.tipo === 'DEVOLUCION' ||
+          transaccion.tipo === 'DESCUENTO' ||
+          transaccion.tipo === 'TRANSFERENCIA') &&
+        monto > saldoActual
+      ) {
       alert('El monto no puede ser mayor al saldo actual del cliente origen');
       return;
     }
@@ -180,6 +235,17 @@ function Transacciones() {
         body = {
           id_cliente_origen: clienteSeleccionado.id_cliente,
           id_cliente_destino: clienteDestinoSeleccionado.id_cliente,
+          fecha: transaccion.fecha,
+          monto: transaccion.monto,
+          observacion: transaccion.observacion
+        };
+      }
+
+      if (transaccion.tipo === 'DESCUENTO') {
+        //endpoint = '/api/transacciones/descuento';
+
+        body = {
+          id_cliente: clienteSeleccionado.id_cliente,
           fecha: transaccion.fecha,
           monto: transaccion.monto,
           observacion: transaccion.observacion
@@ -463,6 +529,14 @@ function Transacciones() {
       </header>
 
       <div className="barra-acciones">
+
+        <button
+          className="btn-vista"
+          onClick={() => navigate('/transacciones/ventas')}
+        >
+          Ventas
+        </button>
+        
         <button
           className="btn-vista"
           onClick={() => setModalClientesAbierto(true)}
@@ -480,6 +554,46 @@ function Transacciones() {
 
       <section className="transacciones-card">
         <h3>Cliente seleccionado</h3>
+
+        <div className="form-grid">
+          <div className="full">
+            <label>Buscar cliente por código, nombre o cédula</label>
+            <input
+              ref={buscarClienteRef}
+              type="text"
+              list="lista-clientes-transaccion"
+              value={textoClienteDirecto}
+              onChange={(e) => {
+                const valor = e.target.value;
+                setTextoClienteDirecto(valor);
+
+                const clienteEncontrado = clientes.find(
+                  (item) => `${item.codigo} - ${item.nombre}` === valor
+                );
+
+                if (clienteEncontrado) {
+                  setClienteSeleccionado(clienteEncontrado);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  seleccionarClienteDirecto();
+                }
+              }}
+              placeholder="Digite código, nombre o cédula del cliente"
+            />
+
+            <datalist id="lista-clientes-transaccion">
+              {clientes.map((item) => (
+                <option
+                  key={item.id_cliente}
+                  value={`${item.codigo} - ${item.nombre}`}
+                />
+              ))}
+            </datalist>
+          </div>
+        </div>
 
         <div className="cliente-info">
           <p>
@@ -515,14 +629,17 @@ function Transacciones() {
           <div>
             <label>Tipo</label>
             <select
+              ref={tipoRef}
               name="tipo"
               value={transaccion.tipo}
               onChange={cambiarTransaccion}
+              onKeyDown={(e) => manejarEnter(e, fechaRef)}
             >
               <option value="ABONO">Abono</option>
               <option value="VENTA">Venta</option>
               <option value="DEVOLUCION">Devolución</option>
               <option value="TRANSFERENCIA">Transferencia</option>
+              <option value="DESCUENTO">Descuento</option>
             </select>
           </div>
 
@@ -545,32 +662,43 @@ function Transacciones() {
           <div>
             <label>Fecha</label>
             <input
+              ref={fechaRef}
               type="date"
               name="fecha"
               value={transaccion.fecha}
               onChange={cambiarTransaccion}
+              onKeyDown={(e) => manejarEnter(e, montoRef)}
             />
           </div>
 
           <div>
             <label>Monto</label>
-            <input
-              type="number"
-              name="monto"
-              value={transaccion.monto}
-              onChange={cambiarTransaccion}
-              min="0"
-            />
+              <input
+                ref={montoRef}
+                type="number"
+                name="monto"
+                value={transaccion.monto}
+                onChange={cambiarTransaccion}
+                onKeyDown={(e) => manejarEnter(e, observacionRef)}
+                min="0"
+              />
           </div>
 
           <div>
             <label>Observación</label>
-            <input
-              type="text"
-              name="observacion"
-              value={transaccion.observacion}
-              onChange={cambiarTransaccion}
-            />
+              <input
+                ref={observacionRef}
+                type="text"
+                name="observacion"
+                value={transaccion.observacion}
+                onChange={cambiarTransaccion}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    guardarTransaccion();
+                  }
+                }}
+              />
           </div>
         </div>
 
