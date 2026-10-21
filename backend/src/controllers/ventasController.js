@@ -153,35 +153,40 @@ const registrarVenta = async (req, res) => {
 
     const idVenta = ventaResult.recordset[0].id_venta;
 
-    const requestMovimientoInventario = new sql.Request(transaction);
 
-    const movimientoResult = await requestMovimientoInventario
-      .input('numero_boleta', sql.VarChar, numero_boleta)
-      .input('id_bodega', sql.Int, Number(id_bodega))
-      .input('fecha', sql.Date, fecha)
-      .input('tipo_movimiento', sql.VarChar, 'S')
-      .input('total', sql.Decimal(14, 2), totalVenta)
-      .query(`
-        INSERT INTO movimientos_inventario (
-          numero_boleta,
-          id_bodega,
-          fecha,
-          tipo_movimiento,
-          total,
-          estado
-        )
-        OUTPUT INSERTED.id_movimiento
-        VALUES (
-          @numero_boleta,
-          @id_bodega,
-          @fecha,
-          @tipo_movimiento,
-          @total,
-          'A'
-        )
-      `);
+  const requestMovimientoInventario = new sql.Request(transaction);
 
-    const idMovimiento = movimientoResult.recordset[0].id_movimiento;
+  const movimientoResult = await requestMovimientoInventario
+    .input('numero_boleta', sql.VarChar, numero_boleta)
+    .input('id_venta', sql.Int, idVenta)
+    .input('id_bodega', sql.Int, Number(id_bodega))
+    .input('fecha', sql.Date, fecha)
+    .input('tipo_movimiento', sql.VarChar, 'S')
+    .input('total', sql.Decimal(14, 2), totalVenta)
+    .query(`
+      INSERT INTO movimientos_inventario (
+        numero_boleta,
+        id_venta,
+        id_bodega,
+        fecha,
+        tipo_movimiento,
+        total,
+        estado
+      )
+      OUTPUT INSERTED.id_movimiento
+      VALUES (
+        @numero_boleta,
+        @id_venta,
+        @id_bodega,
+        @fecha,
+        @tipo_movimiento,
+        @total,
+        'A'
+      )
+    `);
+
+  const idMovimiento = movimientoResult.recordset[0].id_movimiento;
+
 
     for (const item of detalle) {
       const cantidad = Number(item.cantidad);
@@ -532,6 +537,28 @@ const eliminarVenta = async (req, res) => {
             fecha_eliminacion = GETDATE()
         WHERE id_venta = @id_venta
       `);
+
+      
+    const requestInactivarMovimiento = new sql.Request(transaction);
+
+    const resultadoMovimiento = await requestInactivarMovimiento
+      .input('id_venta', sql.Int, Number(id_venta))
+      .query(`
+        UPDATE movimientos_inventario
+        SET estado = 'I'
+        WHERE id_venta = @id_venta
+          AND tipo_movimiento = 'S'
+          AND estado = 'A'
+      `);
+
+    if (resultadoMovimiento.rowsAffected[0] !== 1) {
+      await transaction.rollback();
+
+      return res.status(409).json({
+        mensaje: 'No se encontró un único movimiento activo asociado a esta venta. No se realizó la eliminación.'
+      });
+    }
+
 
     await transaction.commit();
 
