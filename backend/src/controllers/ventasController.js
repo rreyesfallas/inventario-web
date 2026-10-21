@@ -246,18 +246,28 @@ const registrarVenta = async (req, res) => {
         `);
 
       const requestRebajar = new sql.Request(transaction);
+      
+      const resultadoRebaja = await requestRebajar
+      
+          .input('id_bodega', sql.Int, Number(id_bodega))
+          .input('id_articulo', sql.Int, Number(item.id_articulo))
+          .input('cantidad', sql.Decimal(14, 2), cantidad)
+          .query(`
+              UPDATE existencias_bodega
+              SET existencia = existencia - @cantidad,
+                  fecha_actualizacion = GETDATE()
+              WHERE id_bodega = @id_bodega
+                AND id_articulo = @id_articulo
+                AND existencia >= @cantidad
+          `);
 
-      await requestRebajar
-        .input('id_bodega', sql.Int, Number(id_bodega))
-        .input('id_articulo', sql.Int, Number(item.id_articulo))
-        .input('cantidad', sql.Decimal(14, 2), cantidad)
-        .query(`
-          UPDATE existencias_bodega
-          SET existencia = existencia - @cantidad,
-              fecha_actualizacion = GETDATE()
-          WHERE id_bodega = @id_bodega
-            AND id_articulo = @id_articulo
-        `);
+      if (resultadoRebaja.rowsAffected[0] !== 1) {
+          await transaction.rollback();
+
+          return res.status(400).json({
+              mensaje: `Existencia insuficiente para el artículo ${item.codigo || item.id_articulo}. No se registró la venta.`
+          });
+      }
     }
 
     const requestCliente = new sql.Request(transaction);

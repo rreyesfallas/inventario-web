@@ -26,6 +26,7 @@
         const [bodegas, setBodegas] = useState([]);
         const [empleados, setEmpleados] = useState([]);
         const [articulos, setArticulos] = useState([]);
+        const [existencias, setExistencias] = useState([]);
 
         const [textoCliente, setTextoCliente] = useState('');
 
@@ -79,25 +80,45 @@
 
         const cargarDatosIniciales = async () => {
             try {
-            const [resClientes, resBodegas, resEmpleados, resArticulos] = await Promise.all([
-                fetch('/api/clientes'),
-                fetch('/api/bodegas'),
-                fetch('/api/empleados'),
-                fetch('/api/articulos')
-            ]);
+                const [
+                    resClientes,
+                    resBodegas,
+                    resEmpleados,
+                    resArticulos,
+                    resExistencias
+                ] = await Promise.all([
+                    fetch('/api/clientes'),
+                    fetch('/api/bodegas'),
+                    fetch('/api/empleados'),
+                    fetch('/api/articulos'),
+                    fetch('/api/movimientos-inventario/existencias')
+                ]);
 
-            const datosClientes = await resClientes.json();
-            const datosBodegas = await resBodegas.json();
-            const datosEmpleados = await resEmpleados.json();
-            const datosArticulos = await resArticulos.json();
+                const datosClientes = await resClientes.json();
+                const datosBodegas = await resBodegas.json();
+                const datosEmpleados = await resEmpleados.json();
+                const datosArticulos = await resArticulos.json();
+                const datosExistencias = await resExistencias.json();
 
-            setClientes(datosClientes);
-            setBodegas(datosBodegas);
-            setEmpleados(datosEmpleados);
-            setArticulos(datosArticulos);
+                if (
+                    !resClientes.ok ||
+                    !resBodegas.ok ||
+                    !resEmpleados.ok ||
+                    !resArticulos.ok ||
+                    !resExistencias.ok
+                ) {
+                    throw new Error('Error al consultar los datos iniciales');
+                }
+
+                setClientes(datosClientes);
+                setBodegas(datosBodegas);
+                setEmpleados(datosEmpleados);
+                setArticulos(datosArticulos);
+                setExistencias(datosExistencias);
+
             } catch (error) {
-            console.error('Error cargando datos iniciales:', error);
-            alert('Error al cargar datos para ventas');
+                console.error('Error cargando datos iniciales:', error);
+                alert('Error al cargar datos para ventas');
             }
         };
 
@@ -268,84 +289,161 @@
             });
         };
 
+
         const buscarArticuloPorCodigo = () => {
             const codigo = String(detalleActual.codigo || '').trim().toLowerCase();
 
+            if (!venta.id_bodega) {
+                alert('Primero debe seleccionar una bodega');
+                bodegaRef.current?.focus();
+                return;
+            }
+
             if (!codigo) {
-            alert('Digite el código del artículo');
-            articuloRef.current?.focus();
-            return;
+                alert('Digite el código del artículo');
+                articuloRef.current?.focus();
+                return;
             }
 
             const articuloEncontrado = articulos.find(
-            (item) => String(item.codigo || '').toLowerCase() === codigo
+                (item) => String(item.codigo || '').trim().toLowerCase() === codigo
             );
 
             if (!articuloEncontrado) {
-            alert('No se encontró el artículo');
-            articuloRef.current?.focus();
-            return;
+                alert('No se encontró el artículo');
+                articuloRef.current?.focus();
+                return;
             }
 
-            const existenciaEncontrada = Number(articuloEncontrado.existencia || 0);
+            // Buscar la existencia del artículo en la bodega seleccionada
+            const existenciaEncontrada = existencias.find(
+                (item) =>
+                    Number(item.id_bodega) === Number(venta.id_bodega) &&
+                    Number(item.id_articulo) === Number(articuloEncontrado.id_articulo)
+            );
+
+            const cantidadDisponible = existenciaEncontrada
+                ? Number(existenciaEncontrada.existencia)
+                : 0;
 
             setDetalleActual({
-            id_articulo: articuloEncontrado.id_articulo,
-            codigo: articuloEncontrado.codigo,
-            descripcion: articuloEncontrado.descripcion,
-            precio_unitario: articuloEncontrado.precio || '',
-            existencia: existenciaEncontrada,
-            cantidad: ''
+                id_articulo: articuloEncontrado.id_articulo,
+                codigo: articuloEncontrado.codigo,
+                descripcion: articuloEncontrado.descripcion,
+                precio_unitario: articuloEncontrado.precio || '',
+                existencia: cantidadDisponible,
+                cantidad: ''
             });
 
             cantidadRef.current?.focus();
         };
 
+
+
         const agregarLinea = () => {
             if (!detalleActual.id_articulo) {
-            alert('Seleccione un artículo válido');
-            articuloRef.current?.focus();
-            return;
+                alert('Seleccione un artículo válido');
+                articuloRef.current?.focus();
+                return;
             }
 
             const cantidad = Number(detalleActual.cantidad || 0);
             const precio = Number(detalleActual.precio_unitario || 0);
+            const existencia = Number(detalleActual.existencia || 0);
 
-            if (cantidad <= 0) {
-            alert('La cantidad debe ser mayor a cero');
-            cantidadRef.current?.focus();
-            return;
+            if (!Number.isFinite(cantidad) || cantidad <= 0) {
+                alert('La cantidad debe ser mayor a cero');
+                cantidadRef.current?.focus();
+                return;
             }
 
-            if (precio <= 0) {
-            alert('El precio debe ser mayor a cero');
-            return;
+            if (!Number.isFinite(precio) || precio <= 0) {
+                alert('El precio debe ser mayor a cero');
+                return;
             }
 
-            const subtotal = cantidad * precio;
+            // Buscar si el artículo ya está agregado
+            const indiceExistente = detalleVenta.findIndex(
+                (item) =>
+                Number(item.id_articulo) === Number(detalleActual.id_articulo)
+            );
 
-            const linea = {
-            id_articulo: detalleActual.id_articulo,
-            codigo: detalleActual.codigo,
-            descripcion: detalleActual.descripcion,
-            cantidad,
-            precio_unitario: precio,
-            subtotal
-            };
+            const lineaExistente =
+                indiceExistente >= 0 ? detalleVenta[indiceExistente] : null;
 
-            setDetalleVenta([...detalleVenta, linea]);
+            const cantidadAnterior = lineaExistente
+                ? Number(lineaExistente.cantidad)
+                : 0;
 
+            const cantidadTotal = cantidadAnterior + cantidad;
+
+            // Validar la cantidad acumulada contra la existencia
+            if (cantidadTotal > existencia) {
+                alert(
+                `Existencia insuficiente para ${detalleActual.descripcion}.\n` +
+                `Disponible: ${existencia}\n` +
+                `Ya agregado: ${cantidadAnterior}\n` +
+                `Cantidad adicional: ${cantidad}\n` +
+                `Total solicitado: ${cantidadTotal}`
+                );
+
+                cantidadRef.current?.focus();
+                return;
+            }
+
+            // No combinar precios diferentes en una misma línea
+            if (
+                lineaExistente &&
+                Math.abs(Number(lineaExistente.precio_unitario) - precio) > 0.001
+            ) {
+                alert(
+                'Este artículo ya está agregado con un precio diferente. ' +
+                'Para cambiarlo, elimine primero la línea existente.'
+                );
+                articuloRef.current?.focus();
+                return;
+            }
+
+            if (lineaExistente) {
+                // Actualizar la cantidad del artículo existente
+                setDetalleVenta(
+                detalleVenta.map((item, index) =>
+                    index === indiceExistente
+                    ? {
+                        ...item,
+                        cantidad: cantidadTotal,
+                        subtotal: cantidadTotal * precio
+                        }
+                    : item
+                )
+                );
+            } else {
+                // Agregar un artículo nuevo
+                const linea = {
+                id_articulo: detalleActual.id_articulo,
+                codigo: detalleActual.codigo,
+                descripcion: detalleActual.descripcion,
+                cantidad,
+                precio_unitario: precio,
+                subtotal: cantidad * precio
+                };
+
+                setDetalleVenta([...detalleVenta, linea]);
+            }
+
+            // Limpiar los campos del artículo
             setDetalleActual({
-            id_articulo: '',
-            codigo: '',
-            descripcion: '',
-            precio_unitario: '',
-            existencia: 0,
-            cantidad: ''
+                id_articulo: '',
+                codigo: '',
+                descripcion: '',
+                precio_unitario: '',
+                existencia: 0,
+                cantidad: ''
             });
 
             articuloRef.current?.focus();
         };
+
 
         const eliminarLinea = (indice) => {
             const nuevoDetalle = detalleVenta.filter((_, index) => index !== indice);
@@ -997,7 +1095,7 @@
                 </div>
 
                 <div>
-                    <label>Existencia</label>
+                    <label>Existencia en Bodega</label>
                     <input
                     type="text"
                     value={detalleActual.existencia}

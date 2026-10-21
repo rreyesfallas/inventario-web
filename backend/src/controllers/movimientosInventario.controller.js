@@ -232,6 +232,7 @@ const listarExistencias = async (req, res) => {
       SELECT
         eb.id_existencia,
         eb.id_bodega,
+        eb.id_articulo,
         b.codigo AS codigo_bodega,
         b.descripcion AS bodega,
         a.codigo AS codigo_articulo,
