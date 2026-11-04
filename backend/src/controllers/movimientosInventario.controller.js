@@ -134,7 +134,7 @@ const registrarMovimiento = async (req, res) => {
         .input('id_articulo', sql.Int, idArticulo)
         .query(`
           SELECT existencia
-          FROM existencias_bodega
+          FROM existencias_bodega WITH (UPDLOCK, HOLDLOCK)
           WHERE id_bodega = @id_bodega
             AND id_articulo = @id_articulo
         `);
@@ -177,11 +177,12 @@ const registrarMovimiento = async (req, res) => {
           nuevaExistencia = existencia - cantidad;
         }
 
-        if (nuevaExistencia < 0) {
+        if (tipo_movimiento === 'S' && cantidad > existencia) {
           await transaction.rollback();
 
           return res.status(400).json({
-            mensaje: 'La salida no puede dejar existencia negativa'
+            mensaje: `Existencia insuficiente para el artículo ${idArticulo}. ` +
+                    `Disponible: ${existencia}. Solicitado: ${cantidad}.`
           });
         }
 

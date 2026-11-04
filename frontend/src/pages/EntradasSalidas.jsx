@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -31,6 +31,16 @@ function EntradasSalidas() {
   const [bodegaFiltroMovimiento, setBodegaFiltroMovimiento] = useState('');
 
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState(null);
+
+  const [codigoBodega, setCodigoBodega] = useState('');
+  const [codigoArticulo, setCodigoArticulo] = useState('');
+
+  const boletaRef = useRef(null);
+  const bodegaRef = useRef(null);
+  const fechaRef = useRef(null);
+  const tipoRef = useRef(null);
+  const articuloRef = useRef(null);
+  const cantidadRef = useRef(null);
 
 
   const [movimiento, setMovimiento] = useState({
@@ -127,6 +137,51 @@ function EntradasSalidas() {
     });
   };
 
+  const bodegaEncontrada = bodegas.find(
+    (item) =>
+      String(item.codigo).trim().toUpperCase() ===
+      codigoBodega.trim().toUpperCase()
+  );
+
+  const articuloEncontrado = articulos.find(
+    (item) =>
+      String(item.codigo).trim().toUpperCase() ===
+      codigoArticulo.trim().toUpperCase()
+  );
+
+  const cambiarCodigoBodega = (e) => {
+    const codigo = e.target.value;
+    setCodigoBodega(codigo);
+
+    const bodega = bodegas.find(
+      (item) =>
+        String(item.codigo).trim().toUpperCase() ===
+        codigo.trim().toUpperCase()
+    );
+
+    setMovimiento((anterior) => ({
+      ...anterior,
+      id_bodega: bodega ? bodega.id_bodega : ''
+    }));
+  };
+
+  const cambiarCodigoArticulo = (e) => {
+    const codigo = e.target.value;
+    setCodigoArticulo(codigo);
+
+    const articulo = articulos.find(
+      (item) =>
+        String(item.codigo).trim().toUpperCase() ===
+        codigo.trim().toUpperCase()
+    );
+
+    setDetalleActual((anterior) => ({
+      ...anterior,
+      id_articulo: articulo ? articulo.id_articulo : '',
+      precio: articulo ? articulo.precio : ''
+    }));
+  };
+
   const cambiarDetalleActual = (e) => {
     const { name, value } = e.target;
 
@@ -151,6 +206,7 @@ function EntradasSalidas() {
   };
 
   const seleccionarArticuloVista = (item) => {
+    setCodigoArticulo(String(item.codigo));
     setDetalleActual({
       ...detalleActual,
       id_articulo: item.id_articulo,
@@ -160,10 +216,16 @@ function EntradasSalidas() {
     setModalArticulosAbierto(false);
     setBusquedaArticuloVista('');
     setLineaFiltroVista('');
+    cantidadRef.current?.focus();
   };
 
-  const agregarDetalle = () => {
-    if (!detalleActual.id_articulo || !detalleActual.cantidad || !detalleActual.precio) {
+  const agregarDetalle = async () => {
+    if (
+      !detalleActual.id_articulo ||
+      detalleActual.cantidad === '' ||
+      detalleActual.precio === '' ||
+      detalleActual.precio === null
+    ) {
       alert('Seleccione artículo, cantidad y precio');
       return;
     }
@@ -180,7 +242,12 @@ function EntradasSalidas() {
     const cantidad = Number(detalleActual.cantidad);
     const precio = Number(detalleActual.precio);
 
-    if (cantidad <= 0 || precio < 0) {
+    if (
+      !Number.isFinite(cantidad) ||
+      !Number.isFinite(precio) ||
+      cantidad <= 0 ||
+      precio < 0
+    ) {
       alert('Cantidad o precio inválido');
       return;
     }
@@ -192,6 +259,74 @@ function EntradasSalidas() {
     if (yaExiste) {
       alert('Ese artículo ya fue agregado al detalle');
       return;
+    }
+
+    // Validar existencias cuando el movimiento sea una SALIDA
+    if (movimiento.tipo_movimiento === 'S') {
+
+      if (!movimiento.id_bodega) {
+        alert('Primero debe seleccionar una bodega válida');
+        bodegaRef.current?.focus();
+        return;
+      }
+
+      try {
+        // Consultar existencias actualizadas
+        const respuesta = await fetch(
+          '/api/movimientos-inventario/existencias'
+        );
+
+        if (!respuesta.ok) {
+          throw new Error('No se pudieron consultar las existencias');
+        }
+
+        const datos = await respuesta.json();
+
+        if (!Array.isArray(datos)) {
+          throw new Error('Formato de existencias inválido');
+        }
+
+        setExistencias(datos);
+
+        // Buscar el artículo dentro de la bodega seleccionada
+        const existenciaArticulo = datos.find(item =>
+          String(item.id_bodega) === String(movimiento.id_bodega) &&
+          String(item.codigo_articulo ?? '').trim().toUpperCase() ===
+          String(articuloSeleccionado.codigo).trim().toUpperCase()
+        );
+
+        // Si no existe registro, su existencia es cero
+        const existenciaDisponible = Number(
+          existenciaArticulo?.existencia ?? 0
+        );
+
+        if (!Number.isFinite(existenciaDisponible)) {
+          throw new Error('La existencia consultada no es válida');
+        }
+
+        // Verificar si la cantidad solicitada supera la disponible
+        if (cantidad > existenciaDisponible) {
+          alert(
+            `Existencia insuficiente.\n\n` +
+            `Artículo: ${articuloSeleccionado.codigo} - ${articuloSeleccionado.descripcion}\n` +
+            `Existencia disponible: ${existenciaDisponible}\n` +
+            `Cantidad solicitada: ${cantidad}`
+          );
+
+          cantidadRef.current?.focus();
+          return;
+        }
+
+      } catch (error) {
+        console.error('Error validando existencias:', error);
+
+        alert(
+          'No se pudieron verificar las existencias. ' +
+          'Intente nuevamente.'
+        );
+
+        return;
+      }
     }
 
     const nuevoDetalle = {
@@ -210,6 +345,9 @@ function EntradasSalidas() {
       cantidad: '',
       precio: ''
     });
+
+    setCodigoArticulo('');
+    articuloRef.current?.focus();
   };
 
   const eliminarDetalle = (idArticulo) => {
@@ -379,6 +517,9 @@ function EntradasSalidas() {
       });
 
       cargarExistencias();
+      setCodigoBodega('');
+      setCodigoArticulo('');
+      boletaRef.current?.focus();
       
     } catch (error) {
       console.error('Error guardando movimiento:', error);
@@ -719,53 +860,115 @@ function EntradasSalidas() {
         <h3>Datos de la boleta</h3>
 
         <div className="form-grid">
+
           <div>
             <label>Número de boleta</label>
             <input
+              ref={boletaRef}
               type="text"
               name="numero_boleta"
               value={movimiento.numero_boleta}
               onChange={cambiarMovimiento}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  fechaRef.current?.focus();
+                }
+              }}
             />
-          </div>
-
-          <div>
-            <label>Bodega</label>
-            <select
-              name="id_bodega"
-              value={movimiento.id_bodega}
-              onChange={cambiarMovimiento}
-            >
-              <option value="">Seleccione</option>
-              {bodegas.map((item) => (
-                <option key={item.id_bodega} value={item.id_bodega}>
-                  {item.codigo} - {item.descripcion}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div>
             <label>Fecha</label>
             <input
+              ref={fechaRef}
               type="date"
               name="fecha"
               value={movimiento.fecha}
               onChange={cambiarMovimiento}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  bodegaRef.current?.focus();
+                }
+              }}
+            />
+          </div>
+
+          <div>
+            <label>Código de bodega</label>
+            <input
+              ref={bodegaRef}
+              type="text"
+              value={codigoBodega}
+              onChange={cambiarCodigoBodega}
+              placeholder="Digite el código de bodega"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+
+                  if (!bodegaEncontrada) {
+                    alert('El código de bodega no existe');
+                    return;
+                  }
+
+                   tipoRef.current?.focus();
+                }
+              }}
+            />
+          </div>
+
+          <div>
+            <label>Descripción de la bodega</label>
+            <input
+              type="text"
+              value={bodegaEncontrada?.descripcion || ''}
+              placeholder="Descripción automática"
+              readOnly
             />
           </div>
 
           <div>
             <label>Tipo de movimiento</label>
-            <select
-              name="tipo_movimiento"
-              value={movimiento.tipo_movimiento}
-              onChange={cambiarMovimiento}
-            >
-              <option value="E">Entrada</option>
-              <option value="S">Salida</option>
-            </select>
+
+            <div className="tipo-movimiento-opciones">
+              <label>
+                <input
+                  ref={tipoRef}
+                  type="radio"
+                  name="tipo_movimiento"
+                  value="E"
+                  checked={movimiento.tipo_movimiento === 'E'}
+                  onChange={cambiarMovimiento}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      articuloRef.current?.focus();
+                    }
+                  }}
+                />
+                Entrada
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name="tipo_movimiento"
+                  value="S"
+                  checked={movimiento.tipo_movimiento === 'S'}
+                  onChange={cambiarMovimiento}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      articuloRef.current?.focus();
+                    }
+                  }}
+                />
+                Salida
+              </label>
+            </div>
           </div>
+
         </div>
       </section>
 
@@ -773,22 +976,30 @@ function EntradasSalidas() {
         <h3>Agregar artículo</h3>
 
         <div className="form-grid detalle-grid">
+
           <div>
-            <label>Artículo</label>
+            <label>Código de artículo</label>
 
             <div className="campo-con-boton">
-              <select
-                name="id_articulo"
-                value={detalleActual.id_articulo}
-                onChange={cambiarDetalleActual}
-              >
-                <option value="">Seleccione</option>
-                {articulos.map((item) => (
-                  <option key={item.id_articulo} value={item.id_articulo}>
-                    {item.codigo} - {item.descripcion}
-                  </option>
-                ))}
-              </select>
+              <input
+                ref={articuloRef}
+                type="text"
+                value={codigoArticulo}
+                onChange={cambiarCodigoArticulo}
+                placeholder="Digite el código del artículo"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    cantidadRef.current?.focus();
+
+                    if (codigoArticulo.trim() === '' && detalle.length > 0) {
+                      guardarMovimiento();
+                    } else if (codigoArticulo.trim() !== '') {
+                      buscarArticulo();
+                    }
+                  }
+                }}
+              />
 
               <button
                 type="button"
@@ -801,30 +1012,55 @@ function EntradasSalidas() {
           </div>
 
           <div>
-            <label>Cantidad</label>
+            <label>Descripción del artículo</label>
             <input
-              type="number"
-              name="cantidad"
-              value={detalleActual.cantidad}
-              onChange={cambiarDetalleActual}
-              min="0"
+              type="text"
+              value={articuloEncontrado?.descripcion || ''}
+              placeholder="Descripción automática"
+              readOnly
             />
           </div>
 
           <div>
             <label>Precio</label>
             <input
+              type="text"
+              value={
+                articuloEncontrado
+                  ? formatoMoneda(articuloEncontrado.precio)
+                  : ''
+              }
+              placeholder="Precio automático"
+              readOnly
+            />
+          </div>
+
+          <div>
+            <label>Cantidad</label>
+            <input
+              ref={cantidadRef}
               type="number"
-              name="precio"
-              value={detalleActual.precio}
+              name="cantidad"
+              value={detalleActual.cantidad}
               onChange={cambiarDetalleActual}
               min="0"
+              step="any"
+              placeholder="Digite la cantidad"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  agregarDetalle();
+                }
+              }}
             />
           </div>
 
           <div className="detalle-boton">
-            <button onClick={agregarDetalle}>Agregar artículo</button>
+            <button type="button" onClick={agregarDetalle}>
+              Agregar artículo
+            </button>
           </div>
+
         </div>
       </section>
 

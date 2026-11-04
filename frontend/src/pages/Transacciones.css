@@ -537,3 +537,512 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* MENÚ PRINCIPAL DE TRANSACCIONES */
+
+.transacciones-menu {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.transacciones-menu-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 115px;
+    padding: 18px 12px;
+    background: white;
+    border: 1px solid #dbe3ef;
+    border-radius: 14px;
+    color: #1e293b;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    transition: all 0.2s ease;
+}
+
+.transacciones-menu-btn:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+}
+
+.transacciones-menu-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: #eff6ff;
+    border-radius: 12px;
+    color: #2563eb;
+    font-size: 28px;
+    font-weight: 800;
+}
+
+/* MODAL DE MÓDULO PENDIENTE */
+
+.modal-pendiente {
+    max-width: 450px;
+    text-align: center;
+    padding: 45px 30px;
+}
+
+.modal-pendiente-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 75px;
+    height: 75px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 38px;
+}
+
+.modal-pendiente h4 {
+    color: #1e293b;
+    font-size: 18px;
+    margin: 10px 0;
+}
+
+.modal-pendiente p {
+    color: #64748b;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1100px) {
+    .transacciones-menu {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 650px) {
+    .transacciones-menu {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .transacciones-menu-btn {
+        min-height: 100px;
+        padding: 14px 8px;
+    }
+}
+
+
+.acciones-abono {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.acciones-abono button {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-eliminar-abono {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.btn-cambiar-fecha {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.btn-cambiar-empleado {
+  background: #dcfce7;
+  color: #166534;
+}
+
+
+/* MODAL CAMBIAR FECHA */
+
+.modal-cambiar-fecha {
+  max-width: 460px;
+}
+
+.modal-cambiar-fecha p {
+  margin: 12px 0;
+  color: #334155;
+  font-size: 15px;
+}
+
+.campo-cambiar-fecha {
+  margin-top: 22px;
+}
+
+.campo-cambiar-fecha label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 800;
+  color: #374151;
+}
+
+.campo-cambiar-fecha input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 15px;
+}
+
+.campo-cambiar-fecha input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+
+/* MODAL CAMBIAR EMPLEADO */
+
+.modal-cambiar-empleado {
+  max-width: 480px;
+}
+
+.modal-cambiar-empleado p {
+  margin: 12px 0;
+  color: #334155;
+  font-size: 15px;
+}
+
+.campo-cambiar-empleado {
+  margin-top: 22px;
+}
+
+.campo-cambiar-empleado label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.campo-cambiar-empleado input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 15px;
+}
+
+.campo-cambiar-empleado input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.campo-cambiar-empleado input[readonly] {
+  background: #f1f5f9;
+}
+
+
+
+/* =========================================
+   MEJORAS VISUALES - ESTILO DE VENTAS
+========================================= */
+
+/* Fondo y espacio general */
+.transacciones-page {
+  background: #eef3fb;
+  padding: 30px 36px 50px;
+  color: #17233b;
+}
+
+/* Tarjetas principales */
+.transacciones-card {
+  background: #ffffff;
+  border: 1px solid #e6edf5;
+  border-radius: 20px;
+  padding: 32px 36px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+}
+
+/* Títulos de las tarjetas */
+.transacciones-card h3 {
+  margin: 0 0 30px;
+  text-align: center;
+  color: #14213d;
+  font-size: 25px;
+  font-weight: 800;
+}
+
+/* Formularios organizados en dos columnas */
+.transacciones-card .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 28px;
+}
+
+/* Contenedores de los campos */
+.transacciones-card .form-grid > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Campos que ocupan todo el ancho */
+.transacciones-card .campo-doble {
+  grid-column: 1 / -1;
+}
+
+/* Etiquetas */
+.transacciones-card .form-grid label {
+  display: block;
+  margin-bottom: 9px;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Entradas y listas */
+.transacciones-card .form-grid input,
+.transacciones-card .form-grid select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #111827;
+  font-family: inherit;
+  font-size: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Campos seleccionados */
+.transacciones-card .form-grid input:focus,
+.transacciones-card .form-grid select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13);
+}
+
+/* Campos deshabilitados */
+.transacciones-card .form-grid input:disabled {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+  opacity: 1;
+}
+
+/* Información del cliente */
+.transacciones-card .cliente-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-top: 20px;
+  margin-bottom: 0;
+  gap: 16px;
+}
+
+/* Botón principal de guardar */
+.transacciones-card .acciones-finales {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 26px;
+}
+
+.transacciones-card .btn-guardar {
+  min-width: 170px;
+  min-height: 48px;
+  padding: 12px 24px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.transacciones-card .btn-guardar:hover {
+  background: #1d4ed8;
+}
+
+/* Historial de abonos */
+.transacciones-card .tabla-contenedor {
+  width: 100%;
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+}
+
+.transacciones-card .tabla-contenedor table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.transacciones-card .tabla-contenedor th {
+  padding: 17px 16px;
+  background: #2459df;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+}
+
+.transacciones-card .tabla-contenedor td {
+  padding: 15px 16px;
+  color: #334155;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.transacciones-card .tabla-contenedor tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.transacciones-card .tabla-contenedor tbody tr:hover {
+  background: #eff6ff;
+}
+
+/* Botones del historial */
+
+/* Acciones del historial en una sola fila */
+.acciones-abono {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.acciones-abono button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Permitir desplazamiento horizontal en pantallas pequeñas */
+.transacciones-card .tabla-contenedor {
+  overflow-x: auto;
+}
+
+
+.acciones-abono button {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+/* Adaptación a pantallas medianas */
+@media (max-width: 900px) {
+  .transacciones-page {
+    padding: 24px 20px 40px;
+  }
+
+  .transacciones-card {
+    padding: 26px 22px;
+  }
+}
+
+/* Adaptación a celulares */
+@media (max-width: 600px) {
+  .transacciones-page {
+    padding: 18px 12px 30px;
+  }
+
+  .transacciones-card {
+    padding: 22px 16px;
+    border-radius: 14px;
+  }
+
+  .transacciones-card .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .transacciones-card .campo-doble {
+    grid-column: 1;
+  }
+
+  .transacciones-card .cliente-info {
+    grid-template-columns: 1fr;
+  }
+
+  .transacciones-card .acciones-finales .btn-guardar {
+    width: 100%;
+  }
+}
+
+
+
+/* Separación entre información del cliente y datos del abono */
+.transacciones-card .abonos-formulario-detalle {
+  margin-top: 28px;
+}
+
+/* Campos informativos de solo lectura */
+.transacciones-card .form-grid input[readonly] {
+  background: #f1f5f9;
+  color: #475569;
+  cursor: default;
+}
+
+/* Resaltar el saldo del cliente */
+.transacciones-card .cliente-info p:last-child {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+/* Mejorar separación entre filas del formulario */
+.transacciones-card .form-grid {
+  row-gap: 22px;
+}
+
+
+.btn-eliminar-descuento {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-eliminar-descuento:hover {
+  background-color: #fecaca;
+}
+
+.btn-eliminar-descuento:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
