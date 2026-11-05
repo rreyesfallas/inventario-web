@@ -561,3 +561,47 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ENTRADA CON ENTER */
+
+.datos-cobro-grid {
+  grid-template-columns: 1fr 1fr 2fr;
+}
+
+.detalle-grid {
+  grid-template-columns: 1fr 1.6fr 1fr 1fr 1fr;
+}
+
+.form-grid input[readonly] {
+  background: #f1f5f9;
+  color: #334155;
+  cursor: default;
+}
+
+.ayuda-enter {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #64748b;
+  text-align: left;
+}
+
+.btn-guardar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 1000px) {
+  .datos-cobro-grid,
+  .detalle-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .datos-cobro-grid,
+  .detalle-grid {
+    grid-template-columns: 1fr;
+  }
+}

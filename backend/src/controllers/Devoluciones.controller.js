@@ -517,9 +517,261 @@ const registrarDevolucion = async (req, res) => {
     });
   }
 };
+
+/* ------------------------------------------------------------
+   GET /api/transacciones/devolucion/cliente/:id
+   Devoluciones activas del cliente con sus artículos.
+   ------------------------------------------------------------ */
+const listarDevolucionesCliente = async (req, res) => {
+  const idCliente = Number(req.params.id);
+
+  if (!esEnteroPositivo(idCliente)) {
+    return res.status(400).json({ mensaje: 'Cliente no válido' });
+  }
+
+  try {
+    const pool = await getConnection();
+
+    const resultado = await pool.request()
+      .input('id_cliente', sql.Int, idCliente)
+      .query(`
+        SELECT
+          d.id_devolucion,
+          d.numero_boleta,
+          d.fecha,
+          d.total,
+          d.observacion,
+          b.codigo      AS codigo_bodega,
+          b.descripcion AS bodega,
+          e.codigo      AS codigo_empleado,
+          e.nombre      AS empleado
+        FROM devoluciones d
+        INNER JOIN bodegas b   ON b.id_bodega = d.id_bodega
+        INNER JOIN empleados e ON e.id_empleado = d.id_empleado
+        WHERE d.id_cliente = @id_cliente
+          AND d.estado = 'A'
+        ORDER BY d.fecha DESC, d.id_devolucion DESC;
+
+        SELECT
+          dd.id_devolucion,
+          a.codigo      AS codigo_articulo,
+          a.descripcion AS articulo,
+          dd.cantidad,
+          dd.precio_unitario,
+          dd.subtotal,
+          v.numero_boleta AS boleta_venta
+        FROM devoluciones_detalle dd
+        INNER JOIN devoluciones d    ON d.id_devolucion = dd.id_devolucion
+        INNER JOIN articulos a       ON a.id_articulo = dd.id_articulo
+        INNER JOIN ventas_detalle vd ON vd.id_venta_detalle = dd.id_venta_detalle
+        INNER JOIN ventas v          ON v.id_venta = vd.id_venta
+        WHERE d.id_cliente = @id_cliente
+          AND d.estado = 'A'
+        ORDER BY dd.id_devolucion_detalle;
+      `);
+
+    const [encabezados, lineas] = resultado.recordsets;
+
+    const devoluciones = encabezados.map((devolucion) => ({
+      ...devolucion,
+      detalle: lineas.filter((linea) => linea.id_devolucion === devolucion.id_devolucion)
+    }));
+
+    return res.json(devoluciones);
+  } catch (error) {
+    console.error('Error listando devoluciones del cliente:', error);
+
+    return res.status(500).json({
+      mensaje: 'Error al consultar las devoluciones del cliente',
+      error: error.message
+    });
+  }
+};
+
+/* ------------------------------------------------------------
+   PATCH /api/transacciones/devolucion/:id/anular
+   Revierte inventario y saldo, e inactiva la devolución.
+   ------------------------------------------------------------ */
+const anularDevolucion = async (req, res) => {
+  const idDevolucion = Number(req.params.id);
+
+  if (!esEnteroPositivo(idDevolucion)) {
+    return res.status(400).json({ mensaje: 'El identificador de la devolución no es válido' });
+  }
+
+  let transaction;
+  let finalizada = false;
+
+  const cancelar = async (status, mensaje) => {
+    finalizada = true;
+    await transaction.rollback();
+    return res.status(status).json({ mensaje });
+  };
+
+  try {
+    const pool = await getConnection();
+    transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    const consulta = () => new sql.Request(transaction);
+
+    // 1. Devolución activa (bloqueada).
+    const resultadoDevolucion = await consulta()
+      .input('id_devolucion', sql.Int, idDevolucion)
+      .query(`
+        SELECT id_devolucion, numero_boleta, id_cliente, id_bodega, total
+        FROM devoluciones WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_devolucion = @id_devolucion
+          AND estado = 'A'
+      `);
+
+    if (resultadoDevolucion.recordset.length === 0) {
+      return cancelar(404, 'La devolución no existe o ya fue anulada');
+    }
+
+    const devolucion = resultadoDevolucion.recordset[0];
+    const total = Number(devolucion.total);
+
+    // 2. Cliente (bloqueado).
+    const resultadoCliente = await consulta()
+      .input('id_cliente', sql.Int, devolucion.id_cliente)
+      .query(`
+        SELECT id_cliente, saldo_actual
+        FROM clientes WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_cliente = @id_cliente
+      `);
+
+    if (resultadoCliente.recordset.length === 0) {
+      return cancelar(400, 'No se encontró el cliente de la devolución');
+    }
+
+    // 3. Líneas de la devolución con el estado de su venta.
+    const resultadoLineas = await consulta()
+      .input('id_devolucion', sql.Int, idDevolucion)
+      .query(`
+        SELECT
+          dd.id_articulo,
+          dd.cantidad,
+          a.descripcion AS articulo,
+          v.numero_boleta AS boleta_venta,
+          v.estado  AS estado_venta,
+          vd.estado AS estado_detalle
+        FROM devoluciones_detalle dd
+        INNER JOIN articulos a       ON a.id_articulo = dd.id_articulo
+        INNER JOIN ventas_detalle vd ON vd.id_venta_detalle = dd.id_venta_detalle
+        INNER JOIN ventas v          ON v.id_venta = vd.id_venta
+        WHERE dd.id_devolucion = @id_devolucion
+      `);
+
+    const lineas = resultadoLineas.recordset;
+
+    if (lineas.length === 0) {
+      return cancelar(400, 'La devolución no tiene artículos registrados');
+    }
+
+    const ventaInactiva = lineas.find(
+      (linea) => linea.estado_venta !== 'ACTIVA' || linea.estado_detalle !== 'ACTIVO'
+    );
+
+    if (ventaInactiva) {
+      return cancelar(
+        400,
+        `No se puede anular: la venta de la boleta ${ventaInactiva.boleta_venta} ya fue eliminada`
+      );
+    }
+
+    // 4. Restar la existencia que la devolución había sumado.
+    for (const linea of lineas) {
+      const resultadoExistencia = await consulta()
+        .input('id_bodega', sql.Int, devolucion.id_bodega)
+        .input('id_articulo', sql.Int, linea.id_articulo)
+        .input('cantidad', sql.Decimal(12, 2), Number(linea.cantidad))
+        .query(`
+          UPDATE existencias_bodega WITH (UPDLOCK, HOLDLOCK)
+          SET existencia = existencia - @cantidad,
+              fecha_actualizacion = GETDATE()
+          WHERE id_bodega = @id_bodega
+            AND id_articulo = @id_articulo
+            AND existencia >= @cantidad
+        `);
+
+      if (resultadoExistencia.rowsAffected[0] === 0) {
+        return cancelar(
+          400,
+          `No se puede anular: no hay existencia suficiente de ${linea.articulo} en la bodega para revertir la devolución`
+        );
+      }
+    }
+
+    // 5. Inactivar la entrada de inventario y el movimiento del cliente.
+    await consulta()
+      .input('id_devolucion', sql.Int, idDevolucion)
+      .query(`
+        UPDATE movimientos_inventario
+        SET estado = 'I'
+        WHERE id_devolucion = @id_devolucion
+          AND estado = 'A';
+
+        UPDATE movimientos_cliente
+        SET estado = 'I'
+        WHERE id_devolucion = @id_devolucion
+          AND tipo_movimiento = 'DEVOLUCION'
+          AND estado = 'A';
+      `);
+
+    // 6. Devolver el monto al saldo del cliente.
+    const resultadoSaldo = await consulta()
+      .input('id_cliente', sql.Int, devolucion.id_cliente)
+      .input('monto', sql.Decimal(14, 2), total)
+      .query(`
+        UPDATE clientes
+        SET saldo_actual = saldo_actual + @monto
+        OUTPUT INSERTED.saldo_actual
+        WHERE id_cliente = @id_cliente
+      `);
+
+    // 7. Anular la devolución.
+    await consulta()
+      .input('id_devolucion', sql.Int, idDevolucion)
+      .query(`
+        UPDATE devoluciones
+        SET estado = 'I',
+            fecha_anulacion = GETDATE()
+        WHERE id_devolucion = @id_devolucion
+      `);
+
+    await transaction.commit();
+    finalizada = true;
+
+    return res.json({
+      mensaje: 'Devolución anulada correctamente',
+      id_devolucion: idDevolucion,
+      numero_boleta: devolucion.numero_boleta,
+      monto_reintegrado: total,
+      saldo_nuevo: Number(resultadoSaldo.recordset[0].saldo_actual)
+    });
+  } catch (error) {
+    if (transaction && !finalizada) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error('Error haciendo rollback:', rollbackError);
+      }
+    }
+
+    console.error('Error anulando devolución:', error);
+
+    return res.status(500).json({
+      mensaje: 'Error al anular la devolución',
+      error: error.message
+    });
+  }
+};
  
 module.exports = {
   listarVentasClienteDevolucion,
+  listarDevolucionesCliente,
   obtenerBoletaSugerida,
-  registrarDevolucion
+  registrarDevolucion,
+  anularDevolucion
 };

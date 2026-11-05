@@ -5,6 +5,13 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import './EntradasSalidas.css';
 
+// Fecha de hoy en hora local (Costa Rica), formato YYYY-MM-DD.
+const fechaLocalHoy = () => {
+  const hoy = new Date();
+  const desfase = hoy.getTimezoneOffset() * 60000;
+  return new Date(hoy.getTime() - desfase).toISOString().slice(0, 10);
+};
+
 function EntradasSalidas() {
   const navigate = useNavigate();
 
@@ -46,7 +53,7 @@ function EntradasSalidas() {
   const [movimiento, setMovimiento] = useState({
     numero_boleta: '',
     id_bodega: '',
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: fechaLocalHoy(),
     tipo_movimiento: 'E'
   });
 
@@ -504,7 +511,7 @@ function EntradasSalidas() {
       setMovimiento({
         numero_boleta: '',
         id_bodega: '',
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: fechaLocalHoy(),
         tipo_movimiento: 'E'
       });
 

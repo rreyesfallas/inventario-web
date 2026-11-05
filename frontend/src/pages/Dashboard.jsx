@@ -10,7 +10,8 @@ import {
   FaFileInvoiceDollar,
   FaSignInAlt,
   FaHistory,
-  FaUserCog
+  FaUserCog,
+  FaChartBar
 } from 'react-icons/fa';
 
 import './Dashboard.css';
@@ -72,6 +73,13 @@ function Dashboard() {
       descripcion: 'Reportes de cobros y pagos',
       icono: <FaFileInvoiceDollar />,
       ruta: '/informe-cobros'
+    },
+
+    {
+      titulo: 'Reportes',
+      descripcion: 'Desempeño de empleados y otros reportes',
+      icono: <FaChartBar />,
+      ruta: '/reportes'
     },
     {
       titulo: 'Entradas / Salidas',

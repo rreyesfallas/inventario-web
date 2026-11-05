@@ -47,6 +47,10 @@ function DevolucionesModal({
   const [saldoCliente, setSaldoCliente] = useState(Number(cliente.saldo_actual || 0));
   const [guardando, setGuardando] = useState(false);
 
+  const [devolucionesCliente, setDevolucionesCliente] = useState([]);
+  const [cargandoDevoluciones, setCargandoDevoluciones] = useState(true);
+  const [anulandoId, setAnulandoId] = useState(null);
+
   const cantidadRef = useRef(null);
   const boletaRef = useRef(null);
   const bodegaRef = useRef(null);
@@ -82,11 +86,32 @@ function DevolucionesModal({
     }
   };
 
+
+  const cargarDevolucionesCliente = async (signal) => {
+    setCargandoDevoluciones(true);
+    try {
+      const respuesta = await fetch(
+        `/api/transacciones/devolucion/cliente/${cliente.id_cliente}`,
+        { signal }
+      );
+      if (!respuesta.ok) throw new Error('No se pudieron consultar las devoluciones');
+      const datos = await respuesta.json();
+      if (!signal?.aborted) setDevolucionesCliente(Array.isArray(datos) ? datos : []);
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      console.error('Error cargando devoluciones:', error);
+      setDevolucionesCliente([]);
+    } finally {
+      if (!signal?.aborted) setCargandoDevoluciones(false);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
 
     cargarLineasVenta(controller.signal);
     cargarBoletaSugerida(controller.signal);
+    cargarDevolucionesCliente(controller.signal);
 
     fetch('/api/bodegas', { signal: controller.signal })
       .then((respuesta) => (respuesta.ok ? respuesta.json() : []))
@@ -267,7 +292,11 @@ const eliminarDelDetalle = () => {
       setLineaSeleccionada(null);
       setCantidad('');
 
-      await Promise.all([cargarLineasVenta(), cargarBoletaSugerida()]);
+      await Promise.all([
+        cargarLineasVenta(),
+        cargarBoletaSugerida(),
+        cargarDevolucionesCliente()
+      ]);
 
       onGuardado?.(datos);
       alert(datos.mensaje || 'Devolución registrada correctamente');
@@ -276,6 +305,51 @@ const eliminarDelDetalle = () => {
       alert('No se pudo registrar la devolución');
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const anularDevolucion = async (devolucion) => {
+    if (anulandoId !== null) return;
+
+    const confirmar = window.confirm(
+      `¿Anular la devolución de la boleta ${devolucion.numero_boleta} por ${formatoMoneda(devolucion.total)}?\n\n` +
+      'Se restará la mercadería de la bodega y el monto se volverá a sumar al saldo del cliente.'
+    );
+
+    if (!confirmar) return;
+
+    try {
+      setAnulandoId(devolucion.id_devolucion);
+
+      const respuesta = await fetch(
+        `/api/transacciones/devolucion/${devolucion.id_devolucion}/anular`,
+        { method: 'PATCH' }
+      );
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        alert(datos.mensaje || 'No se pudo anular la devolución');
+        return;
+      }
+
+      setSaldoCliente(Number(datos.saldo_nuevo));
+
+      await Promise.all([
+        cargarLineasVenta(),
+        cargarBoletaSugerida(),
+        cargarDevolucionesCliente()
+      ]);
+
+      // Actualiza el saldo en la pantalla de Abonos.
+      onGuardado?.(datos);
+
+      alert(datos.mensaje || 'Devolución anulada correctamente');
+    } catch (error) {
+      console.error('Error anulando devolución:', error);
+      alert('No se pudo anular la devolución');
+    } finally {
+      setAnulandoId(null);
     }
   };
 
@@ -542,6 +616,57 @@ const eliminarDelDetalle = () => {
           <button type="button" className="btn-vista" disabled={guardando} onClick={onCerrar}>
             Cancelar
           </button>
+        </div>
+        <h4 className="devoluciones-historial-titulo">Historial de devoluciones del cliente</h4>
+        <div className="tabla-contenedor devoluciones-tabla-historial">
+          <table>
+            <thead>
+              <tr>
+                <th>Boleta</th>
+                <th>Fecha</th>
+                <th>Artículos</th>
+                <th>Bodega</th>
+                <th>Empleado</th>
+                <th>Total</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cargandoDevoluciones ? (
+                <tr><td colSpan="7" className="sin-datos">Cargando devoluciones...</td></tr>
+              ) : devolucionesCliente.length === 0 ? (
+                <tr><td colSpan="7" className="sin-datos">Este cliente no tiene devoluciones registradas.</td></tr>
+              ) : (
+                devolucionesCliente.map((devolucion) => (
+                  <tr key={devolucion.id_devolucion}>
+                    <td>{devolucion.numero_boleta}</td>
+                    <td>{mostrarFecha(devolucion.fecha)}</td>
+                    <td className="devoluciones-celda-articulos">
+                      {devolucion.detalle.map((linea, indice) => (
+                        <div key={indice}>
+                          {Number(linea.cantidad)} × {linea.articulo}
+                          <span className="devoluciones-boleta-venta"> (venta {linea.boleta_venta})</span>
+                        </div>
+                      ))}
+                    </td>
+                    <td>{devolucion.codigo_bodega} - {devolucion.bodega}</td>
+                    <td>{devolucion.codigo_empleado} - {devolucion.empleado}</td>
+                    <td>{formatoMoneda(devolucion.total)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-eliminar"
+                        disabled={anulandoId !== null || guardando}
+                        onClick={() => anularDevolucion(devolucion)}
+                      >
+                        {anulandoId === devolucion.id_devolucion ? 'Anulando...' : 'Anular'}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

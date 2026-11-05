@@ -13,6 +13,12 @@ import './Transacciones.css';
 import DevolucionesModal from './DevolucionesModal';
 
 
+// Fecha de hoy en hora local (Costa Rica), formato YYYY-MM-DD.
+const fechaLocalHoy = () => {
+  const hoy = new Date();
+  const desfase = hoy.getTimezoneOffset() * 60000;
+  return new Date(hoy.getTime() - desfase).toISOString().slice(0, 10);
+};
 
 function Transacciones() {
 
@@ -37,7 +43,7 @@ function Transacciones() {
   const [modalTransferenciasAbierto, setModalTransferenciasAbierto] = useState(false);
   const [codigoClienteDestinoTransferencia, setCodigoClienteDestinoTransferencia] = useState('');
   const [montoTransferencia, setMontoTransferencia] = useState('');
-  const [fechaTransferencia, setFechaTransferencia] = useState(new Date().toISOString().slice(0, 10));
+  const [fechaTransferencia, setFechaTransferencia] = useState(fechaLocalHoy());
   const [descripcionTransferencia, setDescripcionTransferencia] = useState('');
   const [codigoEmpleadoTransferencia, setCodigoEmpleadoTransferencia] = useState('');
   const [transferenciasCliente, setTransferenciasCliente] = useState([]);
@@ -55,7 +61,7 @@ function Transacciones() {
   const [textoClienteDescuento, setTextoClienteDescuento] = useState('');
   const [clienteDescuento, setClienteDescuento] = useState(null);
   const [codigoEmpleadoDescuento, setCodigoEmpleadoDescuento] = useState('');
-  const [fechaDescuento, setFechaDescuento] = useState(new Date().toISOString().slice(0, 10));
+  const [fechaDescuento, setFechaDescuento] = useState(fechaLocalHoy());
   const [montoDescuento, setMontoDescuento] = useState('');
   const [descripcionDescuento, setDescripcionDescuento] = useState('');
   const [descuentosCliente, setDescuentosCliente] = useState([]);
@@ -178,7 +184,7 @@ function Transacciones() {
 
     tipo: 'ABONO',
 
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: fechaLocalHoy(),
 
     monto: '',
 
@@ -1009,7 +1015,7 @@ function Transacciones() {
 
         tipo: 'ABONO',
 
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: fechaLocalHoy(),
 
         monto: '',
 
@@ -1729,7 +1735,7 @@ function Transacciones() {
         : ''
     );
     setCodigoEmpleadoDescuento(empleadoSeleccionado ? String(empleadoSeleccionado.codigo) : '');
-    setFechaDescuento(new Date().toISOString().slice(0, 10));
+    setFechaDescuento(fechaLocalHoy());
     setMontoDescuento('');
     setDescripcionDescuento('');
     setModalDescuentosAbierto(true);
@@ -1892,7 +1898,7 @@ function Transacciones() {
     setClienteDestinoSeleccionado(null);
     setCodigoClienteDestinoTransferencia('');
     setMontoTransferencia('');
-    setFechaTransferencia(new Date().toISOString().slice(0, 10));
+    setFechaTransferencia(fechaLocalHoy());
     setDescripcionTransferencia('');
     setCodigoEmpleadoTransferencia(empleadoSeleccionado ? String(empleadoSeleccionado.codigo) : '');
     setModalTransferenciasAbierto(true);
@@ -2884,27 +2890,15 @@ function Transacciones() {
               <table>
 
                 <thead>
-
                   <tr>
-
                     <th>Fecha</th>
-
-                    <th>Monto</th>
-
+                    <th>Abono</th>
                     <th>Rollo</th>
-
                     <th>Empleado</th>
-
-                    <th>Acciones</th>
-
                     <th>Observación</th>
-
                     <th>Acciones</th>
-
                   </tr>
-
                 </thead>
-
 
 
                 <tbody>
@@ -2925,7 +2919,7 @@ function Transacciones() {
 
                     <tr>
 
-                      <td colSpan="5" className="sin-datos">
+                      <td colSpan="6" className="sin-datos">
 
                         Este cliente no tiene abonos registrados.
 

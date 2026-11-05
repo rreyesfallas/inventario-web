@@ -5,12 +5,19 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
+// Fecha de hoy en hora local (Costa Rica), formato YYYY-MM-DD.
+const fechaLocalHoy = () => {
+  const hoy = new Date();
+  const desfase = hoy.getTimezoneOffset() * 60000;
+  return new Date(hoy.getTime() - desfase).toISOString().slice(0, 10);
+};
+
 function InformeCobros() {
   const navigate = useNavigate();
 
   const [rollos, setRollos] = useState([]);
   const [filtros, setFiltros] = useState({
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: fechaLocalHoy(),
     id_rollo: ''
   });
 
@@ -81,7 +88,7 @@ function InformeCobros() {
 
   const limpiar = () => {
     setFiltros({
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: fechaLocalHoy(),
       id_rollo: ''
     });
 

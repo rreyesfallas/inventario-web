@@ -18,6 +18,8 @@ import Bodegas from './pages/Bodegas';
 import RutaProtegida from './components/RutaProtegida';
 import CambiarClave from './pages/CambiarClave';
 import Ventas from './pages/Ventas';
+import Reportes from './pages/Reportes';
+import ReporteDesempenoEmpleados from './pages/ReporteDesempenoEmpleados';
 
 function App() {
   return (
@@ -93,6 +95,24 @@ function App() {
         element={
           <RutaProtegida>
             <InformeCobros />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/reportes"
+        element={
+          <RutaProtegida>
+            <Reportes />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/reportes/desempeno-empleados"
+        element={
+          <RutaProtegida>
+            <ReporteDesempenoEmpleados />
           </RutaProtegida>
         }
       />

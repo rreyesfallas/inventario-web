@@ -17,6 +17,7 @@ const authRoutes = require('./routes/auth.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const ventasRoutes = require('./routes/ventasRoutes');
+const reportesRoutes = require('./routes/reportes.routes');
 
 
 const path = require('path');
@@ -43,6 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ventas', ventasRoutes);
+app.use('/api/reportes', reportesRoutes);
 
 app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 

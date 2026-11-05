@@ -17,14 +17,17 @@ const {
 
 const {
   listarVentasClienteDevolucion,
+  listarDevolucionesCliente,
   obtenerBoletaSugerida,
-  registrarDevolucion
-} = require('../controllers/devoluciones.controller');
+  registrarDevolucion,
+  anularDevolucion
+} = require('../controllers/Devoluciones.controller');
 
 
 router.get('/', listarMovimientosCliente);
 router.get('/cliente/:id', listarHistorialCliente);
 router.get('/devolucion/boleta-sugerida', obtenerBoletaSugerida);
+router.get('/devolucion/cliente/:id', listarDevolucionesCliente); 
 router.get('/devolucion/cliente/:id/ventas', listarVentasClienteDevolucion);
 
 router.post('/abono', registrarAbono);
@@ -38,5 +41,6 @@ router.patch('/abono/:id/empleado', cambiarEmpleadoAbono);
 router.patch('/:id/eliminar-abono', eliminarAbono);
 router.patch('/descuento/:id/eliminar', eliminarDescuento);
 router.patch('/transferencia/:id/eliminar', eliminarTransferencia);
+router.patch('/devolucion/:id/anular', anularDevolucion);    
 
 module.exports = router;

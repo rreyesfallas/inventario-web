@@ -72,3 +72,22 @@
   line-height: 1.2;
   box-sizing: border-box;
 }
+
+
+.devoluciones-historial-titulo {
+  margin-top: 32px;
+}
+
+.devoluciones-tabla-historial {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.devoluciones-celda-articulos {
+  text-align: left;
+}
+
+.devoluciones-boleta-venta {
+  color: #6b7280;
+  font-size: 0.85em;
+}

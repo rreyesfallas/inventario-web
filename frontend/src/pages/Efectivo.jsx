@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState,useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import './Efectivo.css';
+
+// Fecha de hoy en hora local (Costa Rica), formato YYYY-MM-DD.
+const fechaLocalHoy = () => {
+  const hoy = new Date();
+  const desfase = hoy.getTimezoneOffset() * 60000;
+  return new Date(hoy.getTime() - desfase).toISOString().slice(0, 10);
+};
 
 function Efectivo() {
   const navigate = useNavigate();
@@ -24,7 +31,7 @@ function Efectivo() {
   const [rolloFiltroCobro, setRolloFiltroCobro] = useState('');
 
   const [cobro, setCobro] = useState({
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: fechaLocalHoy(),
     id_rollo: ''
   });
 
@@ -35,6 +42,18 @@ function Efectivo() {
   });
 
   const [detalle, setDetalle] = useState([]);
+
+    // Lo que se digita en pantalla (número de rollo y código de empleado).
+  const [numeroRollo, setNumeroRollo] = useState('');
+  const [codigoEmpleado, setCodigoEmpleado] = useState('');
+  const [guardandoCobro, setGuardandoCobro] = useState(false);
+
+  // Para saltar de un campo a otro con Enter.
+  const fechaRef = useRef(null);
+  const rolloRef = useRef(null);
+  const empleadoRef = useRef(null);
+  const efectivoRef = useRef(null);
+  const sinpeRef = useRef(null);
 
   const cargarRollos = async () => {
     try {
@@ -93,59 +112,122 @@ function Efectivo() {
     });
   };
 
+  const rolloSeleccionado = rollos.find(
+    (item) => String(item.id_rollo) === String(cobro.id_rollo)
+  );
+
+  const empleadoActual = empleados.find(
+    (item) => String(item.id_empleado) === String(detalleActual.id_empleado)
+  );
+
+  const manejarEnter = (e, siguienteRef) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      siguienteRef.current?.focus();
+    }
+  };
+
+  const buscarRolloPorNumero = () => {
+    const numero = numeroRollo.trim();
+
+    if (!numero) {
+      alert('Digite el número del rollo');
+      return;
+    }
+
+    const encontrado = rollos.find(
+      (item) =>
+        String(item.numero).trim() === numero &&
+        (!item.estado || item.estado === 'A')
+    );
+
+    if (!encontrado) {
+      alert('No se encontró un rollo activo con ese número');
+      setCobro((anterior) => ({ ...anterior, id_rollo: '' }));
+      return;
+    }
+
+    setCobro((anterior) => ({ ...anterior, id_rollo: String(encontrado.id_rollo) }));
+    empleadoRef.current?.focus();
+  };
+
+  const buscarEmpleadoPorCodigo = () => {
+    const codigo = codigoEmpleado.trim().toLowerCase();
+
+    // Código vacío + Enter = guardar el cobro.
+    if (!codigo) {
+      guardarCobro();
+      return;
+    }
+
+    const encontrado = empleados.find(
+      (item) =>
+        String(item.codigo || '').trim().toLowerCase() === codigo &&
+        item.estado === 'A'
+    );
+
+    if (!encontrado) {
+      alert('No se encontró un empleado activo con ese código');
+      setDetalleActual((anterior) => ({ ...anterior, id_empleado: '' }));
+      return;
+    }
+
+    if (detalle.some((item) => item.id_empleado === encontrado.id_empleado)) {
+      alert('Ese empleado ya fue agregado a este cobro');
+      return;
+    }
+
+    setDetalleActual((anterior) => ({
+      ...anterior,
+      id_empleado: String(encontrado.id_empleado)
+    }));
+
+    efectivoRef.current?.focus();
+  };
+
   const agregarDetalle = () => {
-    if (!detalleActual.id_empleado) {
-      alert('Seleccione un empleado');
+    if (!empleadoActual) {
+      alert('Digite el código del empleado y presione Enter');
+      empleadoRef.current?.focus();
       return;
     }
 
     const efectivo = Number(detalleActual.efectivo || 0);
     const sinpe = Number(detalleActual.sinpe || 0);
 
-    if (efectivo < 0 || sinpe < 0) {
+    if (!Number.isFinite(efectivo) || !Number.isFinite(sinpe) || efectivo < 0 || sinpe < 0) {
       alert('Los montos no pueden ser negativos');
+      efectivoRef.current?.focus();
       return;
     }
 
     if (efectivo === 0 && sinpe === 0) {
       alert('Debe ingresar efectivo o SINPE');
+      efectivoRef.current?.focus();
       return;
     }
 
-    const empleadoSeleccionado = empleados.find(
-      (item) => String(item.id_empleado) === String(detalleActual.id_empleado)
-    );
-
-    if (!empleadoSeleccionado) {
-      alert('Empleado no válido');
+    if (detalle.some((item) => item.id_empleado === empleadoActual.id_empleado)) {
+      alert('Ese empleado ya fue agregado a este cobro');
       return;
     }
 
-    const yaExiste = detalle.some(
-      (item) => String(item.id_empleado) === String(detalleActual.id_empleado)
-    );
+    setDetalle((anterior) => [
+      ...anterior,
+      {
+        id_empleado: Number(empleadoActual.id_empleado),
+        codigo: empleadoActual.codigo,
+        empleado: empleadoActual.nombre,
+        efectivo,
+        sinpe,
+        total: Math.round((efectivo + sinpe) * 100) / 100
+      }
+    ]);
 
-    if (yaExiste) {
-      alert('Ese empleado ya fue agregado');
-      return;
-    }
-
-    const nuevoDetalle = {
-      id_empleado: Number(detalleActual.id_empleado),
-      codigo: empleadoSeleccionado.codigo,
-      empleado: empleadoSeleccionado.nombre,
-      efectivo,
-      sinpe,
-      total: efectivo + sinpe
-    };
-
-    setDetalle([...detalle, nuevoDetalle]);
-
-    setDetalleActual({
-      id_empleado: '',
-      efectivo: '',
-      sinpe: ''
-    });
+    // Limpiar y volver al código de empleado para el siguiente cobrador.
+    setDetalleActual({ id_empleado: '', efectivo: '', sinpe: '' });
+    setCodigoEmpleado('');
+    empleadoRef.current?.focus();
   };
 
   const eliminarDetalle = (idEmpleado) => {
@@ -153,26 +235,43 @@ function Efectivo() {
   };
 
   const guardarCobro = async () => {
-    if (!cobro.fecha || !cobro.id_rollo) {
-      alert('Fecha y rollo son obligatorios');
+    if (guardandoCobro) return;
+
+    if (!cobro.fecha) {
+      alert('Seleccione la fecha del cobro');
+      fechaRef.current?.focus();
+      return;
+    }
+
+    if (!cobro.id_rollo) {
+      alert('Digite el número del rollo y presione Enter');
+      rolloRef.current?.focus();
       return;
     }
 
     if (detalle.length === 0) {
       alert('Debe agregar al menos un cobrador');
+      empleadoRef.current?.focus();
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Guardar el cobro del rollo ${rolloSeleccionado?.numero} - ${rolloSeleccionado?.descripcion}?\n\n` +
+      `Total: ${formatoMoneda(totalGeneral)}`
+    );
+
+    if (!confirmar) {
+      empleadoRef.current?.focus();
       return;
     }
 
     try {
+      setGuardandoCobro(true);
+
       const respuesta = await fetch('/api/cobros-efectivo', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...cobro,
-          detalle
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...cobro, detalle })
       });
 
       const datos = await respuesta.json();
@@ -184,22 +283,19 @@ function Efectivo() {
 
       alert(datos.mensaje);
 
-      setCobro({
-        fecha: new Date().toISOString().slice(0, 10),
-        id_rollo: ''
-      });
-
+      setCobro({ fecha: fechaLocalHoy(), id_rollo: '' });
+      setNumeroRollo('');
+      setCodigoEmpleado('');
       setDetalle([]);
-      setDetalleActual({
-        id_empleado: '',
-        efectivo: '',
-        sinpe: ''
-      });
+      setDetalleActual({ id_empleado: '', efectivo: '', sinpe: '' });
 
       cargarCobros();
+      rolloRef.current?.focus();
     } catch (error) {
       console.error('Error guardando cobro:', error);
       alert('Error al guardar cobro');
+    } finally {
+      setGuardandoCobro(false);
     }
   };
 
@@ -438,31 +534,49 @@ function Efectivo() {
       <section className="efectivo-card">
         <h3>Datos del cobro</h3>
 
-        <div className="form-grid">
+        <div className="form-grid datos-cobro-grid">
           <div>
             <label>Fecha</label>
             <input
+              ref={fechaRef}
               type="date"
               name="fecha"
               value={cobro.fecha}
               onChange={cambiarCobro}
+              onKeyDown={(e) => manejarEnter(e, rolloRef)}
             />
           </div>
 
           <div>
-            <label>Rollo</label>
-            <select
-              name="id_rollo"
-              value={cobro.id_rollo}
-              onChange={cambiarCobro}
-            >
-              <option value="">Seleccione</option>
-              {rollos.map((item) => (
-                <option key={item.id_rollo} value={item.id_rollo}>
-                  {item.numero} - {item.descripcion}
-                </option>
-              ))}
-            </select>
+            <label>Número de rollo</label>
+            <input
+              ref={rolloRef}
+              autoFocus
+              type="text"
+              value={numeroRollo}
+              placeholder="Digite el número del rollo"
+              onChange={(e) => {
+                setNumeroRollo(e.target.value);
+                setCobro((anterior) => ({ ...anterior, id_rollo: '' }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  buscarRolloPorNumero();
+                }
+              }}
+            />
+          </div>
+
+          <div>
+            <label>Descripción del rollo</label>
+            <input
+              type="text"
+              readOnly
+              tabIndex={-1}
+              value={rolloSeleccionado?.descripcion || ''}
+              placeholder="Descripción del rollo"
+            />
           </div>
         </div>
       </section>
@@ -472,47 +586,77 @@ function Efectivo() {
 
         <div className="form-grid detalle-grid">
           <div>
-            <label>Empleado</label>
-            <select
-              name="id_empleado"
-              value={detalleActual.id_empleado}
-              onChange={cambiarDetalleActual}
-            >
-              <option value="">Seleccione</option>
-              {empleados.map((item) => (
-                <option key={item.id_empleado} value={item.id_empleado}>
-                  {item.codigo} - {item.nombre}
-                </option>
-              ))}
-            </select>
+            <label>Código de empleado</label>
+            <input
+              ref={empleadoRef}
+              type="text"
+              value={codigoEmpleado}
+              placeholder="Código del empleado"
+              onChange={(e) => {
+                setCodigoEmpleado(e.target.value);
+                setDetalleActual((anterior) => ({ ...anterior, id_empleado: '' }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  buscarEmpleadoPorCodigo();
+                }
+              }}
+            />
+          </div>
+
+          <div>
+            <label>Nombre del empleado</label>
+            <input
+              type="text"
+              readOnly
+              tabIndex={-1}
+              value={empleadoActual?.nombre || ''}
+              placeholder="Nombre del empleado"
+            />
           </div>
 
           <div>
             <label>Efectivo</label>
             <input
+              ref={efectivoRef}
               type="number"
               name="efectivo"
               value={detalleActual.efectivo}
               onChange={cambiarDetalleActual}
+              onKeyDown={(e) => manejarEnter(e, sinpeRef)}
               min="0"
+              step="0.01"
+              placeholder="0"
             />
           </div>
 
           <div>
             <label>SINPE Móvil</label>
             <input
+              ref={sinpeRef}
               type="number"
               name="sinpe"
               value={detalleActual.sinpe}
               onChange={cambiarDetalleActual}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  agregarDetalle();
+                }
+              }}
               min="0"
+              step="0.01"
+              placeholder="0"
             />
           </div>
 
           <div className="detalle-boton">
-            <button onClick={agregarDetalle}>Agregar cobrador</button>
+            <button type="button" onClick={agregarDetalle}>Agregar cobrador</button>
           </div>
         </div>
+
+
       </section>
 
       <section className="efectivo-card">
@@ -572,8 +716,13 @@ function Efectivo() {
         </div>
 
         <div className="acciones-finales">
-          <button className="btn-guardar" onClick={guardarCobro}>
-            Guardar cobro
+          <button
+            type="button"
+            className="btn-guardar"
+            disabled={guardandoCobro}
+            onClick={guardarCobro}
+          >
+            {guardandoCobro ? 'Guardando...' : 'Guardar cobro'}
           </button>
         </div>
       </section>
