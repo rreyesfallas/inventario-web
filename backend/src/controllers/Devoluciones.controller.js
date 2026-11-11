@@ -1,4 +1,5 @@
 const { sql, getConnection } = require('../config/db');
+const { validarBoleta } = require('../utils/boletas');
  
 const redondear = (valor) => Math.round(Number(valor) * 100) / 100;
  
@@ -121,7 +122,7 @@ const obtenerBoletaSugerida = async (req, res) => {
      detalle: [{ id_venta_detalle, cantidad }]
    }
    ------------------------------------------------------------ */
-const registrarDevolucion = async (req, res) => {
+const registrarDevolucion = async (req, res) => { 
   const {
     id_cliente,
     id_rollo,
@@ -251,25 +252,16 @@ const registrarDevolucion = async (req, res) => {
     if (!catalogos.empleado_ok) return cancelar(400, 'El empleado no existe o está inactivo');
     if (!catalogos.bodega_ok) return cancelar(400, 'La bodega no existe o está inactiva');
  
-    // 3. Boleta no usada en devoluciones, movimientos ni ventas activas.
-    const resultadoBoleta = await consulta()
-      .input('numero_boleta', sql.VarChar(20), boleta)
-      .query(`
-        SELECT TOP 1 1 AS existe
-        FROM (
-          SELECT numero_boleta FROM devoluciones WITH (UPDLOCK, HOLDLOCK)
-          WHERE numero_boleta = @numero_boleta AND estado = 'A'
-          UNION ALL
-          SELECT numero_boleta FROM movimientos_inventario WITH (UPDLOCK, HOLDLOCK)
-          WHERE numero_boleta = @numero_boleta AND estado = 'A'
-          UNION ALL
-          SELECT numero_boleta FROM ventas WITH (UPDLOCK, HOLDLOCK)
-          WHERE numero_boleta = @numero_boleta AND estado = 'ACTIVA'
-        ) boletas
-      `);
- 
-    if (resultadoBoleta.recordset.length > 0) {
-      return cancelar(400, `La boleta ${boleta} ya está registrada`);
+    // 3. Reglas de la boleta: misma fecha, misma bodega y mismo rollo.
+    const errorBoleta = await validarBoleta(transaction, {
+      boleta,
+      fecha,
+      idBodega,
+      idRollo
+    });
+
+    if (errorBoleta) {
+      return cancelar(400, errorBoleta);
     }
  
     // 4. Líneas de venta a devolver (bloqueadas) con lo ya devuelto.
@@ -289,6 +281,7 @@ const registrarDevolucion = async (req, res) => {
         vd.id_articulo,
         vd.cantidad,
         vd.precio_unitario,
+        vd.costo_unitario,
         vd.estado AS estado_detalle,
         v.id_cliente,
         v.estado  AS estado_venta,
@@ -339,9 +332,10 @@ const registrarDevolucion = async (req, res) => {
         id_venta_detalle: fila.id_venta_detalle,
         id_articulo: fila.id_articulo,
         cantidad: cantidadDevolver,
+        costo_unitario: Number(fila.costo_unitario || 0),
         precio_unitario: precio,
         subtotal: redondear(cantidadDevolver * precio)
-      });
+      });;
     }
  
     const total = redondear(lineas.reduce((suma, linea) => suma + linea.subtotal, 0));
@@ -380,13 +374,17 @@ const registrarDevolucion = async (req, res) => {
       `);
  
     const idDevolucion = resultadoDevolucion.recordset[0].id_devolucion;
+
+    const totalCosto = redondear(
+      lineas.reduce((suma, linea) => suma + linea.cantidad * linea.costo_unitario, 0)
+    );
  
     // 6. Entrada de inventario.
     const resultadoMovimiento = await consulta()
       .input('numero_boleta', sql.VarChar(30), boleta)
       .input('id_bodega', sql.Int, idBodega)
       .input('fecha', sql.Date, fecha)
-      .input('total', sql.Decimal(14, 2), total)
+      .input('total', sql.Decimal(14, 2), totalCosto)
       .input('id_devolucion', sql.Int, idDevolucion)
       .query(`
         INSERT INTO movimientos_inventario (
@@ -407,25 +405,26 @@ const registrarDevolucion = async (req, res) => {
         .input('id_venta_detalle', sql.Int, linea.id_venta_detalle)
         .input('id_articulo', sql.Int, linea.id_articulo)
         .input('cantidad', sql.Decimal(14, 2), linea.cantidad)
+        .input('costo_unitario', sql.Decimal(14, 2), linea.costo_unitario)
         .input('precio_unitario', sql.Decimal(14, 2), linea.precio_unitario)
         .input('subtotal', sql.Decimal(14, 2), linea.subtotal)
         .query(`
           INSERT INTO devoluciones_detalle (
             id_devolucion, id_venta_detalle, id_articulo,
-            cantidad, precio_unitario, subtotal
+            cantidad, costo_unitario, precio_unitario, subtotal
           )
           VALUES (
             @id_devolucion, @id_venta_detalle, @id_articulo,
-            @cantidad, @precio_unitario, @subtotal
+            @cantidad, @costo_unitario, @precio_unitario, @subtotal
           )
         `);
- 
+      
       await consulta()
         .input('id_movimiento', sql.Int, idMovimiento)
         .input('id_articulo', sql.Int, linea.id_articulo)
         .input('cantidad', sql.Decimal(12, 2), linea.cantidad)
-        .input('precio', sql.Decimal(14, 2), linea.precio_unitario)
-        .input('subtotal', sql.Decimal(14, 2), linea.subtotal)
+        .input('precio', sql.Decimal(14, 2), linea.costo_unitario)
+        .input('subtotal', sql.Decimal(14, 2), Math.round(linea.cantidad * linea.costo_unitario * 100) / 100)
         .query(`
           INSERT INTO movimientos_inventario_detalle (
             id_movimiento, id_articulo, cantidad, precio, subtotal
@@ -504,10 +503,6 @@ const registrarDevolucion = async (req, res) => {
       }
     }
  
-    // Violación de índice único (boleta registrada al mismo tiempo por otro usuario).
-    if (error.number === 2601 || error.number === 2627) {
-      return res.status(400).json({ mensaje: `La boleta ${boleta} ya está registrada` });
-    }
  
     console.error('Error registrando devolución:', error);
  

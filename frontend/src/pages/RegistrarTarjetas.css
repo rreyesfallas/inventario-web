@@ -1,0 +1,141 @@
+/* Usa como base los estilos de Reportes.css */
+ 
+.tarjetas-grid-rollo {
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr 1fr;
+  gap: 16px;
+  align-items: end;
+}
+ 
+.tarjetas-grid-captura {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr 1fr 1fr;
+  gap: 16px;
+  align-items: end;
+  margin-top: 20px;
+}
+ 
+.tarjetas-grid-rollo label,
+.tarjetas-grid-captura label {
+  display: block;
+  font-weight: 800;
+  margin-bottom: 7px;
+  color: #374151;
+  font-size: 14px;
+}
+ 
+.tarjetas-grid-rollo input,
+.tarjetas-grid-captura input {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 15px;
+  color: #111827;
+  background: white;
+  outline: none;
+}
+ 
+.tarjetas-grid-rollo input:focus,
+.tarjetas-grid-captura input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+ 
+.tarjetas-grid-rollo input[readonly],
+.tarjetas-grid-captura input[readonly] {
+  background: #f1f5f9;
+  color: #334155;
+  cursor: default;
+}
+ 
+/* Campo principal: más grande para digitar rápido */
+.tarjetas-input-codigo {
+  font-size: 20px !important;
+  font-weight: 800;
+  border: 2px solid #2563eb !important;
+}
+ 
+.tarjetas-ayuda {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+ 
+/* CONTADORES */
+ 
+.tarjetas-contadores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+ 
+.tarjetas-contador {
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+ 
+.tarjetas-contador span {
+  display: block;
+  color: #64748b;
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+ 
+.tarjetas-contador strong {
+  font-size: 28px;
+  color: #0f172a;
+}
+ 
+.tarjetas-contador-ok strong {
+  color: #15803d;
+}
+ 
+.tarjetas-contador-alerta strong {
+  color: #b91c1c;
+}
+ 
+.tarjetas-completo {
+  margin: 16px 0 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+  text-align: center;
+}
+ 
+.tarjetas-btn-anular {
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+ 
+.tarjetas-btn-anular:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+ 
+@media (max-width: 900px) {
+  .tarjetas-grid-rollo,
+  .tarjetas-grid-captura {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+ 
+@media (max-width: 600px) {
+  .tarjetas-grid-rollo,
+  .tarjetas-grid-captura,
+  .tarjetas-contadores {
+    grid-template-columns: 1fr;
+  }
+}

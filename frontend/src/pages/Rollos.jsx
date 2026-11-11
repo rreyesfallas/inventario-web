@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Rollos.css';
+import { manejarEnterFormulario } from '../utils/navegacionEnter';
 
 function Rollos() {
   const navigate = useNavigate();
@@ -11,12 +12,14 @@ function Rollos() {
   const [modoModal, setModoModal] = useState('agregar');
   const [rolloSeleccionado, setRolloSeleccionado] = useState('');
   const [vehiculos, setVehiculos] = useState([]);
+  const [bodegas, setBodegas] = useState([]);
 
   const [rollo, setRollo] = useState({
     numero: '',
     descripcion: '',
     dia_cobro: '',
-    id_vehiculo: ''
+    id_vehiculo: '',
+    id_bodega: ''
   });
 
   const cargarRollos = async () => {
@@ -32,20 +35,32 @@ function Rollos() {
   };
 
   const cargarVehiculos = async () => {
-  try {
-    const respuesta = await fetch('/api/vehiculos');
-    const datos = await respuesta.json();
+    try {
+      const respuesta = await fetch('/api/vehiculos');
+      const datos = await respuesta.json();
 
-    setVehiculos(datos);
-  } catch (error) {
-    console.error('Error cargando vehículos:', error);
-    alert('Error al cargar vehículos');
-  }
- };
+      setVehiculos(datos);
+    } catch (error) {
+      console.error('Error cargando vehículos:', error);
+      alert('Error al cargar vehículos');
+    }
+  };
+ 
+ const cargarBodegas = async () => {
+    try {
+      const respuesta = await fetch('/api/bodegas');
+      const datos = await respuesta.json();
+      setBodegas(datos);
+    } catch (error) {
+      console.error('Error cargando bodegas:', error);
+      alert('Error al cargar bodegas');
+    }
+  };
 
   useEffect(() => {
     cargarRollos();
     cargarVehiculos();
+    cargarBodegas();
   }, []);
 
   const rollosFiltrados = rollos.filter((item) => {
@@ -55,7 +70,8 @@ function Rollos() {
       String(item.numero || '').toLowerCase().includes(texto) ||
       item.descripcion?.toLowerCase().includes(texto) ||
       item.dia_cobro?.toLowerCase().includes(texto) ||
-      item.vehiculo?.toLowerCase().includes(texto)
+      item.vehiculo?.toLowerCase().includes(texto) ||
+      item.bodega?.toLowerCase().includes(texto)
     );
   });
 
@@ -76,7 +92,8 @@ function Rollos() {
       numero: '',
       descripcion: '',
       dia_cobro: '',
-      id_vehiculo: ''
+      id_vehiculo: '',
+      id_bodega: ''
     });
 
     setModalAbierto(true);
@@ -90,15 +107,16 @@ function Rollos() {
       numero: item.numero || '',
       descripcion: item.descripcion || '',
       dia_cobro: item.dia_cobro || '',
-      id_vehiculo: item.id_vehiculo || ''
+      id_vehiculo: item.id_vehiculo || '',
+      id_bodega: item.id_bodega || ''
     });
 
     setModalAbierto(true);
   };
 
   const guardarRollo = async () => {
-    if (!rollo.numero || !rollo.descripcion || !rollo.dia_cobro) {
-      alert('Número, descripción y día de cobro son obligatorios');
+    if (!rollo.numero || !rollo.descripcion || !rollo.dia_cobro || !rollo.id_bodega) {
+      alert('Número, descripción, día de cobro y bodega son obligatorios');
       return;
     }
 
@@ -181,7 +199,7 @@ function Rollos() {
         <input
           type="text"
           className="buscar"
-          placeholder="Buscar por número, zona, día o vehículo"
+          placeholder="Buscar por número, zona, día o vehículo o bodega"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
@@ -190,8 +208,9 @@ function Rollos() {
           <thead>
             <tr>
               <th>Número</th>
-              <th>Zona / Descripción</th>
+              <th>Zona / Rollo</th>
               <th>Día de cobro</th>
+              <th>Bodega</th>
               <th>Vehículo</th>
               <th>Acciones</th>
             </tr>
@@ -203,6 +222,7 @@ function Rollos() {
                 <td>{item.numero}</td>
                 <td>{item.descripcion}</td>
                 <td>{item.dia_cobro}</td>
+                <td>{item.bodega ? `${item.codigo_bodega} - ${item.bodega}` : '-'}</td>
                 <td>{item.vehiculo || '-'}</td>
                 <td>
                   <div className="acciones-tabla">
@@ -226,7 +246,7 @@ function Rollos() {
 
             {rollosFiltrados.length === 0 && (
               <tr>
-                <td colSpan="5" className="sin-datos">
+                <td colSpan="6" className="sin-datos">
                   No se encontraron rollos
                 </td>
               </tr>
@@ -237,7 +257,10 @@ function Rollos() {
 
       {modalAbierto && (
         <div className="modal-fondo">
-          <div className="modal">
+          <div
+            className="modal"
+            onKeyDown={(e) => manejarEnterFormulario(e, guardarRollo)}
+          >
             <button
               className="btn-cerrar"
               onClick={() => setModalAbierto(false)}
@@ -257,6 +280,7 @@ function Rollos() {
                 <input
                   type="text"
                   name="numero"
+                  autoFocus
                   value={rollo.numero}
                   onChange={cambiarDato}
                 />
@@ -289,23 +313,38 @@ function Rollos() {
                   onChange={cambiarDato}
                 />
               </div>
-            </div>
 
-            <div className="campo-completo">
+              <div>
+                <label>Bodega</label>
+                <select
+                  name="id_bodega"
+                  value={rollo.id_bodega}
+                  onChange={cambiarDato}
+                >
+                  <option value="">Seleccione</option>
+                  {bodegas.map((item) => (
+                    <option key={item.id_bodega} value={item.id_bodega}>
+                      {item.codigo} - {item.descripcion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label>Vehículo asignado</label>
                 <select
-                    name="id_vehiculo"
-                    value={rollo.id_vehiculo}
-                    onChange={cambiarDato}
+                  name="id_vehiculo"
+                  value={rollo.id_vehiculo}
+                  onChange={cambiarDato}
                 >
-                    <option value="">Sin asignar</option>
-
-                    {vehiculos.map((item) => (
+                  <option value="">Sin asignar</option>
+                  {vehiculos.map((item) => (
                     <option key={item.id_vehiculo} value={item.id_vehiculo}>
-                        {item.codigo} - {item.descripcion}
+                      {item.codigo} - {item.descripcion}
                     </option>
-                    ))}
+                  ))}
                 </select>
+              </div>
             </div>
 
             <div className="modal-acciones">

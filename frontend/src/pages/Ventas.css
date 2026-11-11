@@ -547,3 +547,92 @@
   }
 }
 
+/* =====================================
+   INFORMACIÓN DE LA BOLETA
+===================================== */
+
+.ventas-boleta-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  margin: -10px 0 24px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.ventas-boleta-info.existente {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+}
+
+.ventas-boleta-info.nueva {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.ventas-boleta-info strong {
+  font-size: 16px;
+}
+
+/* Campos bloqueados por la boleta (fecha y bodega) */
+.ventas-grid input[readonly] {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.ventas-ayuda {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  text-align: right;
+}
+
+/* =====================================
+   AVISO DE VENTA REGISTRADA
+===================================== */
+
+.ventas-aviso {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 300px;
+  max-width: 420px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #15803d;
+  color: #ffffff;
+  box-shadow: 0 12px 30px rgba(21, 128, 61, 0.35);
+  cursor: pointer;
+  animation: ventas-aviso-entrar 0.25s ease-out;
+}
+
+.ventas-aviso strong {
+  font-size: 16px;
+}
+
+.ventas-aviso span {
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+@keyframes ventas-aviso-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

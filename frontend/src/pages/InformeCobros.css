@@ -344,3 +344,127 @@ tbody tr:hover {
     box-shadow: none;
   }
 }
+
+/* REPORTES DEL COBRO */
+
+.reportes-cobro-botones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.reportes-cobro-botones button {
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: #374151;
+  color: white;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.reportes-cobro-botones button:hover:not(:disabled) {
+  background: #1f2937;
+  transform: translateY(-1px);
+}
+
+.reportes-cobro-botones button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reportes-cobro-ayuda {
+  margin: 12px 0 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .reportes-cobro-botones {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .reportes-cobro-botones,
+  .reportes-cobro-ayuda {
+    display: none;
+  }
+}
+
+/* Ahora son 4 botones de reportes */
+.reportes-cobro-botones {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 900px) {
+  .reportes-cobro-botones {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* VENTANA PARA DIGITAR LA BOLETA */
+
+.informe-modal-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.informe-modal {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  border-radius: 16px;
+  padding: 26px;
+  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.25);
+}
+
+.informe-modal h3 {
+  margin: 0 0 18px;
+  text-align: center;
+  font-size: 21px;
+  color: #0f172a;
+}
+
+.informe-modal label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #374151;
+}
+
+.informe-modal input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #2563eb;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.informe-modal-botones {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.informe-modal-botones button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}

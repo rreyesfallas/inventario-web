@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './InformeCobros.css';
 import jsPDF from 'jspdf';
@@ -33,6 +33,44 @@ function InformeCobros() {
 
   const [detalleClientes, setDetalleClientes] = useState([]);
   const [consultado, setConsultado] = useState(false);
+
+  const [numeroRollo, setNumeroRollo] = useState('');
+  const rolloRef = useRef(null);
+  const fechaRef = useRef(null);
+
+  const [generandoReporte, setGenerandoReporte] = useState(null);
+
+  const [modalBoletaAbierto, setModalBoletaAbierto] = useState(false);
+  const [boletaReporte, setBoletaReporte] = useState('');
+
+  const rolloSeleccionado = rollos.find(
+    (item) => Number(item.id_rollo) === Number(filtros.id_rollo)
+  );
+
+  const buscarRolloPorNumero = () => {
+    const numero = numeroRollo.trim();
+
+    if (!numero) {
+      alert('Digite el número del rollo');
+      return;
+    }
+
+    const encontrado = rollos.find(
+      (item) =>
+        String(item.numero).trim() === numero &&
+        (!item.estado || item.estado === 'A')
+    );
+
+    if (!encontrado) {
+      alert('No se encontró un rollo activo con ese número');
+      setFiltros((anterior) => ({ ...anterior, id_rollo: '' }));
+      return;
+    }
+
+    setFiltros((anterior) => ({ ...anterior, id_rollo: String(encontrado.id_rollo) }));
+    setConsultado(false);
+    fechaRef.current?.focus();
+  };
 
   const cargarRollos = async () => {
     try {
@@ -104,6 +142,8 @@ function InformeCobros() {
 
     setDetalleClientes([]);
     setConsultado(false);
+    setNumeroRollo('');
+    rolloRef.current?.focus();
   };
 
   const formatoMoneda = (valor) => {
@@ -115,8 +155,9 @@ function InformeCobros() {
 
   const formatoMonedaReporte = (valor) => {
     const numero = Number(valor || 0);
+    const signo = numero < 0 ? '-' : '';
 
-    return `¢${numero.toLocaleString('es-CR', {
+    return `${signo}¢${Math.abs(numero).toLocaleString('es-CR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })}`;
@@ -255,8 +296,442 @@ function InformeCobros() {
     XLSX.writeFile(libro, `informe-cobros-${filtros.fecha}.xlsx`);
   };
 
+  // ===================== REPORTES DEL COBRO =====================
+
+  const fechaDMY = (fecha) => {
+    const texto = String(fecha || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return '-';
+    const [anio, mes, dia] = texto.split('-');
+    return `${dia}/${mes}/${anio}`;
+  };
+
+  const nombreUsuario = () => {
+    try {
+      return JSON.parse(localStorage.getItem('usuario'))?.nombre || '';
+    } catch {
+      return '';
+    }
+  };
+
+  // Encabezado común: fecha/hora, título, usuario, rollo, fecha de cobro y bodega.
+  const encabezadoReporte = (doc, titulo, datos) => {
+    const ancho = doc.internal.pageSize.getWidth();
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(fechaDMY(fechaLocalHoy()), 14, 14);
+    doc.text(
+      new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' }),
+      14,
+      19
+    );
+    doc.text(`Usuario: ${nombreUsuario()}`, ancho - 14, 14, { align: 'right' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(titulo, ancho / 2, 15, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('SEGÚN ROLLO Y FECHA', ancho / 2, 21, { align: 'center' });
+
+    doc.setLineWidth(0.4);
+    doc.line(14, 25, ancho - 14, 25);
+
+    const datosRollo = [
+      ['Rollo:', `${datos.rollo.numero}  ${datos.rollo.descripcion}`],
+      ['Fecha de cobro:', fechaDMY(datos.fecha)],
+      [
+        'Bodega:',
+        datos.rollo.bodega
+          ? `${datos.rollo.codigo_bodega}  ${datos.rollo.bodega}`
+          : 'Sin asignar'
+      ]
+    ];
+
+    datosRollo.forEach(([etiqueta, valor], indice) => {
+      const y = 32 + indice * 6;
+      doc.setFont('helvetica', 'bold');
+      doc.text(etiqueta, 14, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(valor, 44, y);
+    });
+  };
+
+  // Bloque de la derecha: etiquetas alineadas y valores alineados en su propia columna.
+  const bloqueDerecha = (doc, filas) => {
+    const ancho = doc.internal.pageSize.getWidth();
+
+    filas.forEach(([etiqueta, valor], indice) => {
+      const y = 32 + indice * 6;
+      doc.setFont('helvetica', 'bold');
+      doc.text(etiqueta, ancho - 52, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(valor), ancho - 14, y, { align: 'right' });
+    });
+  };
+
+  const totalesEncabezado = (doc, datos) => {
+    bloqueDerecha(doc, [
+      ['Reporte efectivo:', formatoMonedaReporte(datos.totales.reporte_efectivo)],
+      ['Suma del sistema:', formatoMonedaReporte(datos.totales.suma_sistema)],
+      ['Diferencia:', formatoMonedaReporte(datos.totales.diferencia)]
+    ]);
+  };
+
+  const estiloTabla = {
+    theme: 'grid',
+    styles: {
+      fontSize: 9,
+      cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 4 },
+      lineColor: [203, 213, 225],
+      lineWidth: 0.2,
+      textColor: [15, 23, 42],
+      valign: 'middle'
+    },
+    headStyles: {
+      fillColor: [55, 65, 81],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold'
+    },
+    footStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [15, 23, 42],
+      fontStyle: 'bold'
+    }
+  };
+
+  // Alineación por columna, aplicada a encabezado, cuerpo y totales.
+  const alinear = ({ derecha = [], centro = [] }) => (data) => {
+    if (derecha.includes(data.column.index)) data.cell.styles.halign = 'right';
+    if (centro.includes(data.column.index)) data.cell.styles.halign = 'center';
+  };
+
+  const pdfAbonos = (datos) => {
+    const doc = new jsPDF();
+    encabezadoReporte(doc, 'REPORTE DE ABONOS', datos);
+    totalesEncabezado(doc, datos);
+
+    autoTable(doc, {
+      ...estiloTabla,
+      startY: 52,
+      head: [['Cliente', 'Nombre', 'Abono', 'Cobrador']],
+      body: datos.abonos.length
+        ? datos.abonos.map((item) => [
+            item.codigo_cliente,
+            item.cliente,
+            formatoMonedaReporte(item.monto),
+            item.codigo_empleado ? `${item.codigo_empleado} - ${item.empleado}` : '-'
+          ])
+        : [['', 'No hay abonos registrados para este rollo y fecha', '', '']],
+      foot: [[
+        '',
+        `Total (${datos.abonos.length} abonos)`,
+        formatoMonedaReporte(datos.totales.suma_sistema),
+        ''
+      ]],
+      columnStyles: {
+        0: { cellWidth: 24 },
+        2: { cellWidth: 34 },
+        3: { cellWidth: 50 }
+      },
+      didParseCell: alinear({ centro: [0], derecha: [2] })
+    });
+
+    return doc;
+  };
+
+  const pdfResumen = (datos) => {
+    const doc = new jsPDF('landscape');
+    encabezadoReporte(doc, 'RESUMEN POR COBRADORES', datos);
+    totalesEncabezado(doc, datos);
+
+    const filas = datos.resumen_cobradores;
+    const suma = (campo) => filas.reduce((total, fila) => total + Number(fila[campo] || 0), 0);
+
+    autoTable(doc, {
+      ...estiloTabla,
+      startY: 52,
+      head: [['Cód. emp.', 'Nombre', 'Efectivo', 'SINPE', 'Reporte efectivo', 'Reporte sistema', 'Diferencia']],
+      body: filas.length
+        ? filas.map((fila) => [
+            fila.codigo_empleado,
+            fila.empleado,
+            formatoMonedaReporte(fila.efectivo),
+            formatoMonedaReporte(fila.sinpe),
+            formatoMonedaReporte(fila.reporte_efectivo),
+            formatoMonedaReporte(fila.reporte_sistema),
+            formatoMonedaReporte(fila.diferencia)
+          ])
+        : [['', 'No hay cobros ni abonos para este rollo y fecha', '', '', '', '', '']],
+      foot: [[
+        '',
+        'Totales',
+        formatoMonedaReporte(suma('efectivo')),
+        formatoMonedaReporte(suma('sinpe')),
+        formatoMonedaReporte(suma('reporte_efectivo')),
+        formatoMonedaReporte(suma('reporte_sistema')),
+        formatoMonedaReporte(suma('diferencia'))
+      ]],
+      columnStyles: {
+        0: { cellWidth: 24 },
+        2: { cellWidth: 34 },
+        3: { cellWidth: 34 },
+        4: { cellWidth: 38 },
+        5: { cellWidth: 38 },
+        6: { cellWidth: 34 }
+      },
+      didParseCell: alinear({ centro: [0], derecha: [2, 3, 4, 5, 6] })
+    });
+
+    return doc;
+  };
+
+  const pdfTarjetasFaltantes = (datos) => {
+    const doc = new jsPDF();
+    encabezadoReporte(doc, 'REPORTE TARJETAS FALTANTES', datos);
+
+    bloqueDerecha(doc, [
+      ['Tarjetas del rollo:', datos.tarjetas.del_rollo],
+      ['Digitadas:', datos.tarjetas.digitadas],
+      ['Faltantes:', datos.tarjetas.faltantes]
+    ]);
+
+    const faltantes = datos.tarjetas_faltantes;
+
+    autoTable(doc, {
+      ...estiloTabla,
+      startY: 52,
+      head: [['Cliente', 'Nombre / Dirección', 'Lado', 'Saldo', 'Últ. registro']],
+      body: faltantes.length
+        ? faltantes.map((item) => [
+            item.codigo_cliente,
+            `${item.cliente}\n${item.direccion || ''}`,
+            item.lado_calle || '-',
+            formatoMonedaReporte(item.saldo_actual),
+            item.ultimo_registro ? fechaDMY(item.ultimo_registro) : 'Nunca'
+          ])
+        : [['', 'No hay tarjetas faltantes: se digitaron todas las tarjetas del rollo', '', '', '']],
+      foot: [[
+        '',
+        `Total faltantes: ${faltantes.length}`,
+        '',
+        formatoMonedaReporte(
+          faltantes.reduce((total, item) => total + Number(item.saldo_actual || 0), 0)
+        ),
+        ''
+      ]],
+      columnStyles: {
+        0: { cellWidth: 26 },
+        2: { cellWidth: 26 },
+        3: { cellWidth: 32 },
+        4: { cellWidth: 28 }
+      },
+      didParseCell: alinear({ centro: [0, 2, 4], derecha: [3] })
+    });
+
+    return doc;
+  };
+  /************************************************* */
+
+  const pdfVentasDevoluciones = (datos) => {
+    const doc = new jsPDF('landscape');
+    const ancho = doc.internal.pageSize.getWidth();
+
+    // encabezadoReporte usa datos.rollo y datos.fecha
+    encabezadoReporte(doc, 'REPORTE DE VENTAS Y DEVOLUCIONES', datos);
+
+    bloqueDerecha(doc, [
+      ['Boleta:', datos.boleta],
+      ['Total líneas:', datos.totales.lineas]
+    ]);
+
+    const lineas = datos.lineas;
+    const signo = (linea, valor) => (linea.tipo === 'DEVOLUCION' ? -Number(valor) : Number(valor));
+
+    autoTable(doc, {
+      ...estiloTabla,
+      startY: 52,
+      head: [['Tipo', 'Cliente', 'Nombre', 'Cód. art.', 'Descripción', 'Cant.', 'Costo', 'Venta', 'Empleado']],
+      body: lineas.map((linea) => [
+        linea.tipo === 'DEVOLUCION' ? 'DEVOL.' : 'VENTA',
+        linea.codigo_cliente,
+        linea.cliente,
+        linea.codigo_articulo,
+        linea.articulo,
+        Number(linea.cantidad),
+        formatoMonedaReporte(signo(linea, linea.total_costo)),
+        formatoMonedaReporte(signo(linea, linea.total_venta)),
+        linea.codigo_empleado ? `${linea.codigo_empleado} - ${linea.empleado}` : '-'
+      ]),
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 22 },
+        3: { cellWidth: 22 },
+        5: { cellWidth: 16 },
+        6: { cellWidth: 30 },
+        7: { cellWidth: 30 },
+        8: { cellWidth: 40 }
+      },
+      didParseCell: (data) => {
+        alinear({ centro: [0, 1, 3, 5], derecha: [6, 7] })(data);
+
+        // Las devoluciones en rojo
+        if (data.section === 'body' && lineas[data.row.index]?.tipo === 'DEVOLUCION') {
+          data.cell.styles.textColor = [185, 28, 28];
+        }
+      }
+    });
+
+    // Totales debajo de la tabla, alineados a la derecha
+    const totales = [
+      ['Total ventas costo:', formatoMonedaReporte(datos.totales.ventas_costo)],
+      ['Total ventas crédito:', formatoMonedaReporte(datos.totales.ventas_credito)],
+      ['Total devoluciones costo:', formatoMonedaReporte(-datos.totales.devoluciones_costo)],
+      ['Total devoluciones crédito:', formatoMonedaReporte(-datos.totales.devoluciones_credito)],
+      ['Neto crédito:', formatoMonedaReporte(datos.totales.neto_credito)]
+    ];
+
+    let y = doc.lastAutoTable.finalY + 10;
+
+    totales.forEach(([etiqueta, valor], indice) => {
+      const esNeto = indice === totales.length - 1;
+
+      if (esNeto) {
+        doc.setLineWidth(0.3);
+        doc.line(ancho - 110, y - 4, ancho - 14, y - 4);
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(etiqueta, ancho - 52, y, { align: 'right' });
+      doc.setFont('helvetica', esNeto ? 'bold' : 'normal');
+      doc.text(valor, ancho - 14, y, { align: 'right' });
+      y += 6;
+    });
+
+    return doc;
+  };
+
+  const generarReporteVentasDevoluciones = async () => {
+    const boleta = boletaReporte.trim();
+
+    if (!boleta) {
+      alert('Digite el número de boleta');
+      return;
+    }
+
+    if (generandoReporte) return;
+
+    // La pestaña se abre antes de esperar al servidor para que el navegador no la bloquee.
+    const ventana = window.open('', '_blank');
+
+    try {
+      setGenerandoReporte('ventas');
+
+      const respuesta = await fetch(
+        `/api/informe-cobros/ventas-devoluciones?boleta=${encodeURIComponent(boleta)}`
+      );
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        ventana?.close();
+        alert(datos.mensaje || 'No se pudo generar el reporte');
+        return;
+      }
+
+      const doc = pdfVentasDevoluciones(datos);
+
+      doc.setProperties({
+        title: `Reporte de ventas y devoluciones - Boleta ${datos.boleta}`
+      });
+      doc.viewerPreferences({ DisplayDocTitle: true });
+
+      if (ventana) {
+        ventana.location.href = doc.output('bloburl');
+      } else {
+        doc.save(`ventas-devoluciones-boleta-${datos.boleta}.pdf`);
+      }
+
+      setModalBoletaAbierto(false);
+      setBoletaReporte('');
+    } catch (error) {
+      ventana?.close();
+      console.error('Error generando reporte de ventas y devoluciones:', error);
+      alert('No se pudo generar el reporte');
+    } finally {
+      setGenerandoReporte(null);
+    }
+  };
+
+  /**************************************************** */
+
+  const generarReporteCobro = async (tipo) => {
+    if (!consultado || !filtros.id_rollo) {
+      alert('Primero consulte el rollo y la fecha');
+      return;
+    }
+
+    if (generandoReporte) return;
+
+    // La pestaña se abre antes de esperar al servidor para que el navegador no la bloquee.
+    const ventana = window.open('', '_blank');
+
+    try {
+      setGenerandoReporte(tipo);
+
+      const parametros = new URLSearchParams({
+        id_rollo: filtros.id_rollo,
+        fecha: filtros.fecha
+      });
+
+      const respuesta = await fetch(`/api/informe-cobros/reportes?${parametros}`);
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        ventana?.close();
+        alert(datos.mensaje || 'No se pudo generar el reporte');
+        return;
+      }
+
+      const generadores = {
+        abonos: pdfAbonos,
+        resumen: pdfResumen,
+        faltantes: pdfTarjetasFaltantes
+      };
+
+      const titulos = {
+        abonos: 'Reporte de abonos',
+        resumen: 'Resumen por cobradores',
+        faltantes: 'Reporte de tarjetas faltantes'
+      };
+
+      const doc = generadores[tipo](datos);
+
+      // Título que muestra la pestaña del navegador.
+      doc.setProperties({
+        title: `${titulos[tipo]} - Rollo ${datos.rollo.numero} - ${fechaDMY(datos.fecha)}`
+      });
+      doc.viewerPreferences({ DisplayDocTitle: true });
+
+      const nombre = `${tipo}-rollo-${datos.rollo.numero}-${datos.fecha}.pdf`;
+
+      if (ventana) {
+        ventana.location.href = doc.output('bloburl');
+      } else {
+        // Si el navegador bloqueó la pestaña, se descarga el PDF.
+        doc.save(nombre);
+      }
+    } catch (error) {
+      ventana?.close();
+      console.error('Error generando reporte:', error);
+      alert('No se pudo generar el reporte');
+    } finally {
+      setGenerandoReporte(null);
+    }
+  };
+
   return (
     <div className="informe-page">
+
       <header className="informe-header">
         <h2>Informe Cobros</h2>
         <button onClick={() => navigate('/dashboard')}>Volver</button>
@@ -267,30 +742,57 @@ function InformeCobros() {
 
         <div className="form-grid">
           <div>
-            <label>Fecha</label>
+            <label>Número de rollo</label>
             <input
-              type="date"
-              name="fecha"
-              value={filtros.fecha}
-              onChange={cambiarFiltro}
+              ref={rolloRef}
+              autoFocus
+              type="text"
+              value={numeroRollo}
+              placeholder="Digite el número del rollo"
+              onChange={(e) => {
+                setNumeroRollo(e.target.value);
+                setFiltros((anterior) => ({ ...anterior, id_rollo: '' }));
+                setConsultado(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  buscarRolloPorNumero();
+                }
+              }}
             />
           </div>
 
           <div>
-            <label>Rollo</label>
-            <select
-              name="id_rollo"
-              value={filtros.id_rollo}
-              onChange={cambiarFiltro}
-            >
-              <option value="">Seleccione</option>
+            <label>Descripción del rollo</label>
+            <input
+              type="text"
+              readOnly
+              tabIndex={-1}
+              value={rolloSeleccionado?.descripcion || ''}
+              placeholder="Descripción del rollo"
+              style={{ background: '#f1f5f9' }}
+            />
+          </div>
 
-              {rollos.map((item) => (
-                <option key={item.id_rollo} value={item.id_rollo}>
-                  {item.numero} - {item.descripcion}
-                </option>
-              ))}
-            </select>
+          <div>
+            <label>Fecha de cobro</label>
+            <input
+              ref={fechaRef}
+              type="date"
+              name="fecha"
+              value={filtros.fecha}
+              onChange={(e) => {
+                cambiarFiltro(e);
+                setConsultado(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  consultarInforme();
+                }
+              }}
+            />
           </div>
 
           <div className="botones-filtro">
@@ -363,6 +865,52 @@ function InformeCobros() {
       )}
       </section>
 
+
+      <section className="informe-card">
+        <h3>Reportes del cobro</h3>
+
+        <div className="reportes-cobro-botones">
+          <button
+            type="button"
+            disabled={!consultado || generandoReporte !== null}
+            onClick={() => generarReporteCobro('abonos')}
+          >
+            🖨 {generandoReporte === 'abonos' ? 'Generando...' : 'Abonos'}
+          </button>
+
+          <button
+            type="button"
+            disabled={!consultado || generandoReporte !== null}
+            onClick={() => generarReporteCobro('resumen')}
+          >
+            🖨 {generandoReporte === 'resumen' ? 'Generando...' : 'Resumen'}
+          </button>
+
+          <button
+            type="button"
+            disabled={!consultado || generandoReporte !== null}
+            onClick={() => generarReporteCobro('faltantes')}
+          >
+            🖨 {generandoReporte === 'faltantes' ? 'Generando...' : 'Tarjetas faltantes'}
+          </button>
+
+           <button
+            type="button"
+            disabled={generandoReporte !== null}
+            onClick={() => setModalBoletaAbierto(true)}
+          >
+            🖨 Ventas / Devol.
+          </button>
+        </div>
+
+        {!consultado && (
+          <p className="reportes-cobro-ayuda">
+            Consulte un rollo y una fecha para generar los reportes.
+          </p>
+        )}
+      </section>
+
+
       <section className="informe-card">
         <h3>Detalle de clientes del rollo</h3>
 
@@ -404,6 +952,50 @@ function InformeCobros() {
           </table>
         </div>
       </section>
+
+      {modalBoletaAbierto && (
+        <div className="informe-modal-fondo" onClick={() => setModalBoletaAbierto(false)}>
+          <div className="informe-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Parámetros del informe</h3>
+
+            <label>Documento (número de boleta)</label>
+            <input
+              type="text"
+              autoFocus
+              value={boletaReporte}
+              placeholder="Ej: 22717"
+              onChange={(e) => setBoletaReporte(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  generarReporteVentasDevoluciones();
+                }
+                if (e.key === 'Escape') {
+                  setModalBoletaAbierto(false);
+                }
+              }}
+            />
+
+            <div className="informe-modal-botones">
+              <button
+                type="button"
+                className="btn-consultar"
+                disabled={generandoReporte !== null}
+                onClick={generarReporteVentasDevoluciones}
+              >
+                {generandoReporte === 'ventas' ? 'Generando...' : 'Aceptar'}
+              </button>
+              <button
+                type="button"
+                className="btn-limpiar"
+                onClick={() => setModalBoletaAbierto(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       
     </div>

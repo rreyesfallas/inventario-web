@@ -9,6 +9,12 @@ const REPORTES = [
     icono: '📊',
     titulo: 'Desempeño de empleados',
     descripcion: 'Abonos, ventas y devoluciones por empleado en un rango de fechas.'
+  },
+  {
+    ruta: '/reportes/registrar-tarjetas',
+    icono: '🗂️',
+    titulo: 'Registrar tarjetas',
+    descripcion: 'Digitar las tarjetas de un rollo para detectar tarjetas faltantes.'
   }
 ];
 

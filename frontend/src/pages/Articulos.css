@@ -164,14 +164,6 @@ tbody tr:hover {
   background: #eff6ff;
 }
 
-td:nth-child(3),
-td:nth-child(4),
-td:nth-child(5),
-th:nth-child(3),
-th:nth-child(4),
-th:nth-child(5) {
-  text-align: center;
-}
 
 /* MODAL */
 
@@ -631,4 +623,25 @@ th:nth-child(5) {
 
 .th-ordenable:hover {
   text-decoration: underline;
+}
+
+/* ALINEACIÓN DE COLUMNAS */
+
+.celda-centro,
+.celda-centro .th-ordenable {
+  text-align: center !important;
+}
+
+.celda-monto,
+.celda-monto .th-ordenable {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+/* Campo calculado (precio de venta sugerido) */
+
+.campo-solo-lectura {
+  background: #f1f5f9;
+  color: #334155;
+  cursor: default;
 }

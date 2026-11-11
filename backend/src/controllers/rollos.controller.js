@@ -4,22 +4,27 @@ const listarRollos = async (req, res) => {
   try {
     const pool = await getConnection();
 
-    const result = await pool.request().query(`
-      SELECT
-        r.id_rollo,
-        r.numero,
-        r.descripcion,
-        r.dia_cobro,
-        r.id_vehiculo,
-        v.codigo AS codigo_vehiculo,
-        v.descripcion AS vehiculo,
-        r.estado
-      FROM rollos r
-      LEFT JOIN vehiculos v
-        ON r.id_vehiculo = v.id_vehiculo
-      WHERE r.estado = 'A'
-      ORDER BY r.numero
-    `);
+      const result = await pool.request().query(`
+        SELECT
+          r.id_rollo,
+          r.numero,
+          r.descripcion,
+          r.dia_cobro,
+          r.id_vehiculo,
+          v.codigo AS codigo_vehiculo,
+          v.descripcion AS vehiculo,
+          r.id_bodega,
+          b.codigo AS codigo_bodega,
+          b.descripcion AS bodega,
+          r.estado
+        FROM rollos r
+        LEFT JOIN vehiculos v
+          ON r.id_vehiculo = v.id_vehiculo
+        LEFT JOIN bodegas b
+          ON r.id_bodega = b.id_bodega
+        WHERE r.estado = 'A'
+        ORDER BY r.numero
+      `);
 
     res.json(result.recordset);
   } catch (error) {
@@ -34,11 +39,11 @@ const listarRollos = async (req, res) => {
 
 const crearRollo = async (req, res) => {
   try {
-    const { numero, descripcion, dia_cobro, id_vehiculo } = req.body;
+    const { numero, descripcion, dia_cobro, id_vehiculo, id_bodega } = req.body;
 
-    if (!numero || !descripcion || !dia_cobro) {
+    if (!numero || !descripcion || !dia_cobro || !id_bodega) {
       return res.status(400).json({
-        mensaje: 'Número, descripción y día de cobro son obligatorios'
+        mensaje: 'Número, descripción, día de cobro y bodega son obligatorios'
       });
     }
 
@@ -63,21 +68,23 @@ const crearRollo = async (req, res) => {
       .input('descripcion', sql.VarChar, descripcion.trim().toUpperCase())
       .input('dia_cobro', sql.VarChar, dia_cobro.trim().toUpperCase())
       .input('id_vehiculo', sql.Int, id_vehiculo ? Number(id_vehiculo) : null)
+      .input('id_bodega', sql.Int, Number(id_bodega))
       .query(`
         INSERT INTO rollos (
           numero,
           descripcion,
           dia_cobro,
-          id_vehiculo
+          id_vehiculo,
+          id_bodega
         )
         VALUES (
           @numero,
           @descripcion,
           @dia_cobro,
-          @id_vehiculo
+          @id_vehiculo,
+          @id_bodega
         )
       `);
-
     res.status(201).json({
       mensaje: 'Rollo creado correctamente'
     });
@@ -93,12 +100,13 @@ const crearRollo = async (req, res) => {
 
 const modificarRollo = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { numero, descripcion, dia_cobro, id_vehiculo } = req.body;
 
-    if (!numero || !descripcion || !dia_cobro) {
+    const { id } = req.params;
+    const { numero, descripcion, dia_cobro, id_vehiculo, id_bodega } = req.body;
+
+    if (!numero || !descripcion || !dia_cobro || !id_bodega) {
       return res.status(400).json({
-        mensaje: 'Número, descripción y día de cobro son obligatorios'
+        mensaje: 'Número, descripción, día de cobro y bodega son obligatorios'
       });
     }
 
@@ -126,12 +134,14 @@ const modificarRollo = async (req, res) => {
       .input('descripcion', sql.VarChar, descripcion.trim().toUpperCase())
       .input('dia_cobro', sql.VarChar, dia_cobro.trim().toUpperCase())
       .input('id_vehiculo', sql.Int, id_vehiculo ? Number(id_vehiculo) : null)
+      .input('id_bodega', sql.Int, Number(id_bodega))
       .query(`
         UPDATE rollos
         SET numero = @numero,
             descripcion = @descripcion,
             dia_cobro = @dia_cobro,
-            id_vehiculo = @id_vehiculo
+            id_vehiculo = @id_vehiculo,
+            id_bodega = @id_bodega
         WHERE id_rollo = @id_rollo
       `);
 

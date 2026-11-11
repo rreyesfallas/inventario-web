@@ -20,6 +20,7 @@ import CambiarClave from './pages/CambiarClave';
 import Ventas from './pages/Ventas';
 import Reportes from './pages/Reportes';
 import ReporteDesempenoEmpleados from './pages/ReporteDesempenoEmpleados';
+import RegistrarTarjetas from './pages/RegistrarTarjetas';
 
 function App() {
   return (
@@ -113,6 +114,15 @@ function App() {
         element={
           <RutaProtegida>
             <ReporteDesempenoEmpleados />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/reportes/registrar-tarjetas"
+        element={
+          <RutaProtegida>
+            <RegistrarTarjetas />
           </RutaProtegida>
         }
       />

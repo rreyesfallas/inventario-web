@@ -1,9 +1,38 @@
-import { useState, useEffect, useRef  } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import './Articulos.css';
+
+// El precio de venta sugerido siempre es el doble del costo.
+const calcularPrecioVenta = (costo) => {
+  const numero = Number(costo);
+  if (!Number.isFinite(numero) || numero < 0) return 0;
+  return Math.round(numero * 2 * 100) / 100;
+};
+
+const formatoNumero = (valor) =>
+  Number(valor || 0).toLocaleString('es-CR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
+// Las fechas de SQL vienen como 'YYYY-MM-DDT00:00:00.000Z'.
+// Se toma el texto tal cual para que no se corra un día por la zona horaria.
+const formatoFecha = (valor) => {
+  const texto = String(valor || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return '-';
+  const [anio, mes, dia] = texto.split('-');
+  return `${dia}/${mes}/${anio}`;
+};
+
+const ARTICULO_VACIO = {
+  codigo: '',
+  id_linea: '',
+  descripcion: '',
+  costo: ''
+};
 
 function Articulos() {
   const navigate = useNavigate();
@@ -11,6 +40,7 @@ function Articulos() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modoModal, setModoModal] = useState('agregar');
   const [codigoSeleccionado, setCodigoSeleccionado] = useState('');
+  const [guardando, setGuardando] = useState(false);
 
   const [articulos, setArticulos] = useState([]);
   const [busqueda, setBusqueda] = useState('');
@@ -29,17 +59,12 @@ function Articulos() {
 
   const [textoLinea, setTextoLinea] = useState('');
 
-   const [articulo, setArticulo] = useState({
-    codigo: '',
-    id_linea: '',
-    descripcion: '',
-    precio: ''
-  });
+  const [articulo, setArticulo] = useState(ARTICULO_VACIO);
 
   const codigoRef = useRef(null);
   const lineaRef = useRef(null);
   const descripcionRef = useRef(null);
-  const precioRef = useRef(null);
+  const costoRef = useRef(null);
 
   const articulosFiltrados = articulos.filter((item) => {
     const textoBusqueda = busqueda.toLowerCase();
@@ -51,12 +76,12 @@ function Articulos() {
     const coincideLinea =
       !filtroLinea || String(item.id_linea) === String(filtroLinea);
 
-    const precio = Number(item.precio || 0);
+    const costo = Number(item.costo || 0);
 
     const coincidePrecio =
       !filtroPrecio ||
-      (filtroPrecio === 'CON_PRECIO' && precio > 0) ||
-      (filtroPrecio === 'SIN_PRECIO' && precio === 0);
+      (filtroPrecio === 'CON_PRECIO' && costo > 0) ||
+      (filtroPrecio === 'SIN_PRECIO' && costo === 0);
 
     const coincideCompra =
       !filtroCompra ||
@@ -89,9 +114,10 @@ function Articulos() {
   const obtenerValorOrden = (item, columna) => {
     if (columna === 'codigo') return Number(item.codigo) || item.codigo || '';
     if (columna === 'descripcion') return item.descripcion || '';
+    if (columna === 'costo') return Number(item.costo || 0);
     if (columna === 'precio') return Number(item.precio || 0);
-    if (columna === 'ultima_compra') return item.ultima_compra || '';
-    if (columna === 'ultimo_movimiento') return item.ultimo_movimiento || '';
+    if (columna === 'ultima_compra') return String(item.ultima_compra || '');
+    if (columna === 'ultimo_movimiento') return String(item.ultimo_movimiento || '');
     if (columna === 'premio') return Number(item.premio || 0);
     if (columna === 'linea') return item.linea || '';
 
@@ -103,9 +129,7 @@ function Articulos() {
     const valorB = obtenerValorOrden(b, columnaOrden);
 
     if (typeof valorA === 'number' && typeof valorB === 'number') {
-      return direccionOrden === 'asc'
-        ? valorA - valorB
-        : valorB - valorA;
+      return direccionOrden === 'asc' ? valorA - valorB : valorB - valorA;
     }
 
     return direccionOrden === 'asc'
@@ -115,7 +139,6 @@ function Articulos() {
 
   const mostrarIndicadorOrden = (columna) => {
     if (columnaOrden !== columna) return '';
-
     return direccionOrden === 'asc' ? ' ↑' : ' ↓';
   };
 
@@ -127,15 +150,11 @@ function Articulos() {
   const articulosPaginados = articulosOrdenados.slice(indiceInicial, indiceFinal);
 
   const irPaginaAnterior = () => {
-    if (paginaActual > 1) {
-      setPaginaActual(paginaActual - 1);
-    }
+    if (paginaActual > 1) setPaginaActual(paginaActual - 1);
   };
 
   const irPaginaSiguiente = () => {
-    if (paginaActual < totalPaginas) {
-      setPaginaActual(paginaActual + 1);
-    }
+    if (paginaActual < totalPaginas) setPaginaActual(paginaActual + 1);
   };
 
   useEffect(() => {
@@ -150,21 +169,16 @@ function Articulos() {
     columnaOrden,
     direccionOrden
   ]);
-// hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
-  const desactivarArticulo = async (idArticulo) => {  
+
+  const desactivarArticulo = async (idArticulo) => {
     const confirmar = confirm('¿Desea desactivar este artículo?');
 
-    if (!confirmar) {
-      return;
-    }
+    if (!confirmar) return;
 
     try {
-      const respuesta = await fetch(
-        `/api/articulos/${idArticulo}/desactivar`,
-        {
-          method: 'PATCH'
-        }
-      );
+      const respuesta = await fetch(`/api/articulos/${idArticulo}/desactivar`, {
+        method: 'PATCH'
+      });
 
       const datos = await respuesta.json();
 
@@ -180,17 +194,11 @@ function Articulos() {
       alert('Error al desactivar artículo');
     }
   };
+
   const abrirModalAgregar = () => {
     setModoModal('agregar');
     setCodigoSeleccionado('');
-
-    setArticulo({
-      codigo: '',
-      id_linea: '',
-      descripcion: '',
-      precio: ''
-    });
-
+    setArticulo(ARTICULO_VACIO);
     setTextoLinea('');
     setModalAbierto(true);
   };
@@ -203,7 +211,7 @@ function Articulos() {
       codigo: item.codigo,
       id_linea: item.id_linea || '',
       descripcion: item.descripcion,
-      precio: item.precio
+      costo: item.costo ?? ''
     });
 
     const lineaEncontrada = lineas.find(
@@ -211,11 +219,8 @@ function Articulos() {
     );
 
     setTextoLinea(lineaEncontrada ? lineaEncontrada.descripcion : '');
-
     setModalAbierto(true);
   };
-
-
 
   const cerrarModal = () => {
     setModalAbierto(false);
@@ -224,10 +229,10 @@ function Articulos() {
   const cambiarDato = (e) => {
     const { name, value } = e.target;
 
-    setArticulo({
-      ...articulo,
+    setArticulo((anterior) => ({
+      ...anterior,
       [name]: value
-    });
+    }));
   };
 
   const manejarEnter = (e, siguienteRef) => {
@@ -240,17 +245,15 @@ function Articulos() {
   const seleccionarLineaPorTexto = () => {
     const texto = textoLinea.trim().toLowerCase();
 
-    const lineaEncontrada = lineas.find((linea) => {
-      const descripcion = String(linea.descripcion || '').toLowerCase();
-
-      return descripcion === texto;
-    });
+    const lineaEncontrada = lineas.find(
+      (linea) => String(linea.descripcion || '').toLowerCase() === texto
+    );
 
     if (lineaEncontrada) {
-      setArticulo({
-        ...articulo,
+      setArticulo((anterior) => ({
+        ...anterior,
         id_linea: lineaEncontrada.id_linea
-      });
+      }));
 
       setTextoLinea(lineaEncontrada.descripcion);
       descripcionRef.current?.focus();
@@ -261,97 +264,109 @@ function Articulos() {
   };
 
   const guardarArticulo = async () => {
-  if (articulo.codigo.trim() === '') {
+    if (guardando) return;
+
+    if (String(articulo.codigo).trim() === '') {
       alert('Debe ingresar el código');
+      codigoRef.current?.focus();
       return;
     }
 
-  if (articulo.descripcion.trim() === '') {
-    alert('Debe ingresar la descripción');
-    return;
-  }
-
-  if (articulo.precio === '') {
-    alert('Debe ingresar el precio');
-    return;
-  }
-
-  if (modoModal === 'agregar') {
-    const existeCodigo = articulos.some(
-      (item) => item.codigo === articulo.codigo
-    );
-
-    if (existeCodigo) {
-      alert('Ya existe un artículo con ese código');
+    if (!articulo.id_linea) {
+      alert('Debe seleccionar una línea válida');
+      lineaRef.current?.focus();
       return;
     }
-//pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
 
-  const respuesta = await fetch('/api/articulos', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      codigo: articulo.codigo,
-      descripcion: articulo.descripcion,
-      id_linea: articulo.id_linea,
-      precio: articulo.precio
-    })
-  });
+    if (String(articulo.descripcion).trim() === '') {
+      alert('Debe ingresar la descripción');
+      descripcionRef.current?.focus();
+      return;
+    }
 
-  const datos = await respuesta.json();
-  console.log('Respuesta backend:', datos);
+    const costo = Number(articulo.costo);
 
-  if (!respuesta.ok) {
-    alert(datos.mensaje || 'Error al agregar artículo');
-    return;
-  }
+    if (String(articulo.costo).trim() === '' || !Number.isFinite(costo) || costo < 0) {
+      alert('Debe ingresar un costo válido');
+      costoRef.current?.focus();
+      return;
+    }
 
-  alert('Artículo agregado correctamente');
-  cerrarModal();
-  cargarArticulos();
-
-
-  } else {
-      const respuesta = await fetch(
-        `/api/articulos/${codigoSeleccionado}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            codigo: articulo.codigo,
-            descripcion: articulo.descripcion,
-            id_linea: articulo.id_linea,
-            precio: articulo.precio
-          })
-        }
+    if (modoModal === 'agregar') {
+      const existeCodigo = articulos.some(
+        (item) => String(item.codigo).trim() === String(articulo.codigo).trim()
       );
+
+      if (existeCodigo) {
+        alert('Ya existe un artículo con ese código');
+        codigoRef.current?.focus();
+        return;
+      }
+    }
+
+    const url =
+      modoModal === 'agregar'
+        ? '/api/articulos'
+        : `/api/articulos/${codigoSeleccionado}`;
+
+    try {
+      setGuardando(true);
+
+      const respuesta = await fetch(url, {
+        method: modoModal === 'agregar' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigo: articulo.codigo,
+          descripcion: articulo.descripcion,
+          id_linea: articulo.id_linea,
+          costo
+        })
+      });
 
       const datos = await respuesta.json();
 
       if (!respuesta.ok) {
-        alert(datos.mensaje || 'Error al modificar artículo');
+        alert(
+          datos.mensaje ||
+            (modoModal === 'agregar' ? 'Error al agregar artículo' : 'Error al modificar artículo')
+        );
         return;
       }
 
-      alert('Artículo modificado correctamente');
+      alert(
+        modoModal === 'agregar'
+          ? 'Artículo agregado correctamente'
+          : 'Artículo modificado correctamente'
+      );
       cerrarModal();
       cargarArticulos();
-  }
-  }
+    } catch (error) {
+      console.error('Error guardando artículo:', error);
+      alert('Error al guardar el artículo');
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   const cargarArticulos = async () => {
     try {
       const respuesta = await fetch('/api/articulos');
       const datos = await respuesta.json();
-
       setArticulos(datos);
     } catch (error) {
       console.error('Error cargando artículos:', error);
       alert('Error al cargar los artículos');
+    }
+  };
+
+  const cargarLineas = async () => {
+    try {
+      const respuesta = await fetch('/api/lineas-articulo');
+      const datos = await respuesta.json();
+      setLineas(datos);
+    } catch (error) {
+      console.error('Error cargando líneas:', error);
+      alert('Error al cargar las líneas');
     }
   };
 
@@ -360,52 +375,28 @@ function Articulos() {
     cargarLineas();
   }, []);
 
-
+  // Al abrir el modal: en "agregar" arranca en Código; en "modificar"
+  // el código está bloqueado, así que arranca en Línea.
   useEffect(() => {
     if (modalAbierto) {
       setTimeout(() => {
-        codigoRef.current?.focus();
+        if (modoModal === 'modificar') {
+          lineaRef.current?.focus();
+        } else {
+          codigoRef.current?.focus();
+        }
       }, 100);
     }
-  }, [modalAbierto]);
+  }, [modalAbierto, modoModal]);
 
-    const cargarLineas = async () => {
-      try {
-        const respuesta = await fetch('/api/lineas-articulo');
-        const datos = await respuesta.json();
+  const articulosOrdenadosReporte = [...articulos].sort((a, b) => {
+    const codigoA = Number(a.codigo);
+    const codigoB = Number(b.codigo);
 
-        setLineas(datos);
-      } catch (error) {
-        console.error('Error cargando líneas:', error);
-        alert('Error al cargar las líneas');
-      }
-    };
+    if (!isNaN(codigoA) && !isNaN(codigoB)) return codigoA - codigoB;
 
-    const articulosOrdenadosReporte = [...articulos].sort((a, b) => {
-      const codigoA = Number(a.codigo);
-      const codigoB = Number(b.codigo);
-
-      if (!isNaN(codigoA) && !isNaN(codigoB)) {
-        return codigoA - codigoB;
-      }
-
-      return String(a.codigo).localeCompare(String(b.codigo));
-    });
-
-    const formatoNumeroReporte = (valor) => {
-  const numero = Number(valor || 0);
-
-  return numero.toLocaleString('es-CR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    return String(a.codigo).localeCompare(String(b.codigo));
   });
-};
-
-const formatoFechaReporte = (valor) => {
-    if (!valor) return '-';
-
-    return new Date(valor).toLocaleDateString('es-CR');
-  };
 
   const exportarPDFArticulos = () => {
     if (articulosOrdenadosReporte.length === 0) {
@@ -427,12 +418,13 @@ const formatoFechaReporte = (valor) => {
 
     autoTable(doc, {
       startY: 52,
-      theme: 'striped',
+      theme: 'grid',
       margin: { left: 10, right: 10 },
       head: [[
         'Código',
         'Descripción',
-        'Precio',
+        'Costo',
+        'Precio venta',
         'Últ. compra',
         'Últ. movimiento',
         'Premio',
@@ -441,17 +433,18 @@ const formatoFechaReporte = (valor) => {
       body: articulosOrdenadosReporte.map((item) => [
         item.codigo || '-',
         item.descripcion || '-',
-        formatoNumeroReporte(item.precio),
-        formatoFechaReporte(item.ultima_compra),
-        formatoFechaReporte(item.ultimo_movimiento),
-        item.premio || 0,
+        formatoNumero(item.costo),
+        formatoNumero(item.precio),
+        formatoFecha(item.ultima_compra),
+        formatoFecha(item.ultimo_movimiento),
+        Number(item.premio || 0),
         item.linea || '-'
       ]),
-      styles: {
-        fontSize: 8
-      },
-      headStyles: {
-        fontSize: 8
+      styles: { fontSize: 8 },
+      headStyles: { fontSize: 8, fillColor: [55, 65, 81] },
+      didParseCell: (data) => {
+        if ([2, 3].includes(data.column.index)) data.cell.styles.halign = 'right';
+        if ([0, 4, 5, 6].includes(data.column.index)) data.cell.styles.halign = 'center';
       }
     });
 
@@ -473,7 +466,8 @@ const formatoFechaReporte = (valor) => {
       [
         'Código',
         'Descripción',
-        'Precio',
+        'Costo',
+        'Precio venta',
         'Últ. compra',
         'Últ. movimiento',
         'Premio',
@@ -482,10 +476,11 @@ const formatoFechaReporte = (valor) => {
       ...articulosOrdenadosReporte.map((item) => [
         item.codigo || '',
         item.descripcion || '',
+        Number(item.costo || 0),
         Number(item.precio || 0),
-        formatoFechaReporte(item.ultima_compra),
-        formatoFechaReporte(item.ultimo_movimiento),
-        item.premio || 0,
+        formatoFecha(item.ultima_compra),
+        formatoFecha(item.ultimo_movimiento),
+        Number(item.premio || 0),
         item.linea || ''
       ])
     ];
@@ -496,16 +491,15 @@ const formatoFechaReporte = (valor) => {
       { wch: 12 },
       { wch: 35 },
       { wch: 14 },
+      { wch: 14 },
       { wch: 16 },
       { wch: 18 },
-      { wch: 12 },
+      { wch: 10 },
       { wch: 18 }
     ];
 
     const libro = XLSX.utils.book_new();
-
     XLSX.utils.book_append_sheet(libro, hoja, 'Artículos');
-
     XLSX.writeFile(libro, 'listado-articulos-ordenado-codigo.xlsx');
   };
 
@@ -517,6 +511,17 @@ const formatoFechaReporte = (valor) => {
 
     window.print();
   };
+
+  const columnasOrdenables = [
+    { clave: 'codigo', titulo: 'Código', clase: 'celda-centro' },
+    { clave: 'descripcion', titulo: 'Descripción', clase: '' },
+    { clave: 'costo', titulo: 'Costo', clase: 'celda-monto' },
+    { clave: 'precio', titulo: 'Precio venta', clase: 'celda-monto' },
+    { clave: 'ultima_compra', titulo: 'Últ. compra', clase: 'celda-centro' },
+    { clave: 'ultimo_movimiento', titulo: 'Últ. movimiento', clase: 'celda-centro' },
+    { clave: 'premio', titulo: 'Premio', clase: 'celda-centro' },
+    { clave: 'linea', titulo: 'Línea', clase: '' }
+  ];
 
   return (
     <div className="articulos-page">
@@ -551,20 +556,16 @@ const formatoFechaReporte = (valor) => {
         <h3>Vista de artículos</h3>
 
         <input
-            className="buscar"
-            type="text"
-            placeholder="Buscar por código o descripción"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+          className="buscar"
+          type="text"
+          placeholder="Buscar por código o descripción"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
         />
 
         <div className="articulos-filtros">
-          <select
-            value={filtroLinea}
-            onChange={(e) => setFiltroLinea(e.target.value)}
-          >
+          <select value={filtroLinea} onChange={(e) => setFiltroLinea(e.target.value)}>
             <option value="">Todas las líneas</option>
-
             {lineas.map((item) => (
               <option key={item.id_linea} value={item.id_linea}>
                 {item.descripcion}
@@ -572,28 +573,19 @@ const formatoFechaReporte = (valor) => {
             ))}
           </select>
 
-          <select
-            value={filtroPrecio}
-            onChange={(e) => setFiltroPrecio(e.target.value)}
-          >
-            <option value="">Todos los precios</option>
-            <option value="CON_PRECIO">Con precio</option>
-            <option value="SIN_PRECIO">Sin precio</option>
+          <select value={filtroPrecio} onChange={(e) => setFiltroPrecio(e.target.value)}>
+            <option value="">Todos los costos</option>
+            <option value="CON_PRECIO">Con costo</option>
+            <option value="SIN_PRECIO">Sin costo</option>
           </select>
 
-          <select
-            value={filtroCompra}
-            onChange={(e) => setFiltroCompra(e.target.value)}
-          >
+          <select value={filtroCompra} onChange={(e) => setFiltroCompra(e.target.value)}>
             <option value="">Todas las compras</option>
             <option value="CON_COMPRA">Con última compra</option>
             <option value="SIN_COMPRA">Sin última compra</option>
           </select>
 
-          <select
-            value={filtroMovimiento}
-            onChange={(e) => setFiltroMovimiento(e.target.value)}
-          >
+          <select value={filtroMovimiento} onChange={(e) => setFiltroMovimiento(e.target.value)}>
             <option value="">Todos los movimientos</option>
             <option value="CON_MOVIMIENTO">Con movimiento</option>
             <option value="SIN_MOVIMIENTO">Sin movimiento</option>
@@ -617,120 +609,65 @@ const formatoFechaReporte = (valor) => {
         <div className="tabla-contenedor">
           <table>
             <thead>
-                  <tr>
-                    <th>
-                      <button
-                        type="button"
-                        className="th-ordenable"
-                        onClick={() => ordenarPor('codigo')}
-                      >
-                        Código{mostrarIndicadorOrden('codigo')}
-                      </button>
-                    </th>
-
-                    <th>
-                      <button
-                        type="button"
-                        className="th-ordenable"
-                        onClick={() => ordenarPor('descripcion')}
-                      >
-                        Descripción{mostrarIndicadorOrden('descripcion')}
-                      </button>
-                    </th>
-
-                    <th>
-                      <button
-                        type="button"
-                        className="th-ordenable"
-                        onClick={() => ordenarPor('precio')}
-                      >
-                        Precio{mostrarIndicadorOrden('precio')}
-                      </button>
-                    </th>
-
-                    <th>
-                      <button
-                        type="button"
-                        className="th-ordenable"
-                        onClick={() => ordenarPor('ultima_compra')}
-                      >
-                        Últ. compra{mostrarIndicadorOrden('ultima_compra')}
-                      </button>
-                    </th>
-
-                    <th>
-                      <button
-                        type="button"
-                        className="th-ordenable"
-                        onClick={() => ordenarPor('ultimo_movimiento')}
-                      >
-                        Últ. movimiento{mostrarIndicadorOrden('ultimo_movimiento')}
-                      </button>
-                    </th>
-
-                    <th>
-                      <button
-                        type="button"
-                        className="th-ordenable"
-                        onClick={() => ordenarPor('premio')}
-                      >
-                        Premio{mostrarIndicadorOrden('premio')}
-                      </button>
-                    </th>
-
-                    <th>
-                      <button
-                        type="button"
-                        className="th-ordenable"
-                        onClick={() => ordenarPor('linea')}
-                      >
-                        Línea{mostrarIndicadorOrden('linea')}
-                      </button>
-                    </th>
-
-                    <th>Acciones</th>
-                  </tr>
+              <tr>
+                {columnasOrdenables.map((columna) => (
+                  <th key={columna.clave} className={columna.clase}>
+                    <button
+                      type="button"
+                      className="th-ordenable"
+                      onClick={() => ordenarPor(columna.clave)}
+                    >
+                      {columna.titulo}
+                      {mostrarIndicadorOrden(columna.clave)}
+                    </button>
+                  </th>
+                ))}
+                <th className="celda-centro">Acciones</th>
+              </tr>
             </thead>
 
             <tbody>
-                  {articulosPaginados.map((item) => (
-                      <tr key={item.codigo}>
-                      <td>{item.codigo}</td>
-                      <td>{item.descripcion}</td>
-                      <td>{item.precio}</td>
-                      <td>{item.ultimaCompra || '-'}</td>
-                      <td>{item.ultimoMovimiento || '-'}</td>
-                      <td>
-                          <div className="acciones-tabla">
-                          <button
-                              className="btn-modificar"
-                              onClick={() => abrirModalModificar(item)}
-                          >
-                              Editar
-                          </button>
+              {articulosPaginados.map((item) => (
+                <tr key={item.id_articulo}>
+                  <td className="celda-centro">{item.codigo}</td>
+                  <td>{item.descripcion}</td>
+                  <td className="celda-monto">{formatoNumero(item.costo)}</td>
+                  <td className="celda-monto">{formatoNumero(item.precio)}</td>
+                  <td className="celda-centro">{formatoFecha(item.ultima_compra)}</td>
+                  <td className="celda-centro">{formatoFecha(item.ultimo_movimiento)}</td>
+                  <td className="celda-centro">{Number(item.premio || 0)}</td>
+                  <td>{item.linea || '-'}</td>
+                  <td>
+                    <div className="acciones-tabla">
+                      <button
+                        className="btn-modificar"
+                        onClick={() => abrirModalModificar(item)}
+                      >
+                        Editar
+                      </button>
 
-                          <button
-                              className="btn-desactivar"
-                              onClick={() => desactivarArticulo(item.id_articulo)}
-                          >
-                              Desactivar
-                          </button>
-                          </div>
-                      </td>
-                      </tr>
-                  ))}
+                      <button
+                        className="btn-desactivar"
+                        onClick={() => desactivarArticulo(item.id_articulo)}
+                      >
+                        Desactivar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
 
-                  {articulosFiltrados.length === 0 && (
-                      <tr>
-                      <td colSpan="6" style={{ textAlign: 'center' }}>
-                          No se encontraron artículos
-                      </td>
-                      </tr>
-                  )}
+              {articulosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: 'center' }}>
+                    No se encontraron artículos
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        
+
         <div className="paginacion-tabla">
           <div className="paginacion-info">
             <span>
@@ -753,11 +690,7 @@ const formatoFechaReporte = (valor) => {
               <option value={50}>50 por página</option>
             </select>
 
-            <button
-              type="button"
-              onClick={irPaginaAnterior}
-              disabled={paginaActual === 1}
-            >
+            <button type="button" onClick={irPaginaAnterior} disabled={paginaActual === 1}>
               Anterior
             </button>
 
@@ -813,10 +746,10 @@ const formatoFechaReporte = (valor) => {
                       (linea) => String(linea.descripcion) === valor
                     );
 
-                    setArticulo({
-                      ...articulo,
+                    setArticulo((anterior) => ({
+                      ...anterior,
                       id_linea: lineaEncontrada ? lineaEncontrada.id_linea : ''
-                    });
+                    }));
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -829,10 +762,7 @@ const formatoFechaReporte = (valor) => {
 
                 <datalist id="lista-lineas">
                   {lineas.map((item) => (
-                    <option
-                      key={item.id_linea}
-                      value={item.descripcion}
-                    />
+                    <option key={item.id_linea} value={item.descripcion} />
                   ))}
                 </datalist>
               </div>
@@ -845,17 +775,19 @@ const formatoFechaReporte = (valor) => {
                   name="descripcion"
                   value={articulo.descripcion}
                   onChange={cambiarDato}
-                  onKeyDown={(e) => manejarEnter(e, precioRef)}
+                  onKeyDown={(e) => manejarEnter(e, costoRef)}
                 />
               </div>
 
               <div>
-                <label>Precio</label>
+                <label>Costo</label>
                 <input
-                  ref={precioRef}
+                  ref={costoRef}
                   type="number"
-                  name="precio"
-                  value={articulo.precio}
+                  name="costo"
+                  min="0"
+                  step="0.01"
+                  value={articulo.costo}
                   onChange={cambiarDato}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -865,10 +797,27 @@ const formatoFechaReporte = (valor) => {
                   }}
                 />
               </div>
+
+              <div>
+                <label>Precio de venta sugerido (costo × 2)</label>
+                <input
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  className="campo-solo-lectura"
+                  value={
+                    String(articulo.costo).trim() === ''
+                      ? ''
+                      : formatoNumero(calcularPrecioVenta(articulo.costo))
+                  }
+                />
+              </div>
             </div>
 
             <div className="modal-botones">
-              <button onClick={guardarArticulo}>Guardar</button>
+              <button onClick={guardarArticulo} disabled={guardando}>
+                {guardando ? 'Guardando...' : 'Guardar'}
+              </button>
               <button onClick={cerrarModal}>Cancelar</button>
             </div>
           </div>
