@@ -48,16 +48,38 @@ const obtenerInformeCobros = async (req, res) => {
     `);
 
     const resumenCobrosAcumulado = await pool.request()
-    .input('fecha', sql.Date, fecha)
-    .input('id_rollo', sql.Int, Number(id_rollo))
-    .query(`
-      SELECT
-        ISNULL(SUM(total_general), 0) AS total_cobrado_acumulado
-      FROM cobros_efectivo
-      WHERE fecha <= @fecha
-        AND id_rollo = @id_rollo
-        AND estado = 'A'
-    `);
+      .input('fecha', sql.Date, fecha)
+      .input('id_rollo', sql.Int, Number(id_rollo))
+      .query(`
+        SELECT
+          ISNULL(SUM(total_general), 0) AS total_cobrado_acumulado
+        FROM cobros_efectivo
+        WHERE fecha <= @fecha
+          AND id_rollo = @id_rollo
+          AND estado = 'A'
+      `);
+
+    // Efecto en el saldo de los movimientos POSTERIORES a la fecha consultada.
+    // Ventas y transferencias recibidas suben el saldo; abonos, descuentos,
+    // devoluciones, transferencias enviadas y eliminaciones de venta lo bajan.
+    const movimientosPosteriores = await pool.request()
+      .input('fecha', sql.Date, fecha)
+      .input('id_rollo', sql.Int, Number(id_rollo))
+      .query(`
+        SELECT
+          ISNULL(SUM(
+            CASE
+              WHEN mc.tipo_movimiento IN ('VENTA', 'TRANSFERENCIA_ENTRADA') THEN mc.monto
+              ELSE -mc.monto
+            END
+          ), 0) AS efecto_posterior
+        FROM movimientos_cliente mc
+        INNER JOIN clientes c ON c.id_cliente = mc.id_cliente
+        WHERE c.id_rollo = @id_rollo
+          AND c.estado = 'A'
+          AND mc.estado = 'A'
+          AND mc.fecha > @fecha
+      `);
 
     const detalleClientes = await pool.request()
       .input('id_rollo', sql.Int, Number(id_rollo))
@@ -86,10 +108,12 @@ const obtenerInformeCobros = async (req, res) => {
     const totalSaldoActual = Number(resumenCliente.total_saldo_actual || 0);
     const totalCobradoFecha = Number(resumenCobroFecha.total_cobrado_fecha || 0);
     const totalCobradoAcumulado = Number(resumenCobroAcumulado.total_cobrado_acumulado || 0);
-    const saldoPendienteEstimado = Math.max(
-      totalSaldoActual - totalCobradoAcumulado,
-      0
-    );
+    
+    // Saldo del rollo al cierre de la fecha: saldo actual menos el efecto
+    // de todo lo que pasó después de esa fecha.
+    const efectoPosterior = Number(movimientosPosteriores.recordset[0].efecto_posterior || 0);
+    const saldoPendienteEstimado =
+      Math.round((totalSaldoActual - efectoPosterior) * 100) / 100;
 
     res.json({
       resumen: {

@@ -39,6 +39,7 @@ function DevolucionesModal({
   const [claveDetalleSeleccionada, setClaveDetalleSeleccionada] = useState(null);
 
   const [boleta, setBoleta] = useState('');
+  const [boletaEnUso, setBoletaEnUso] = useState(false);
   const [fecha, setFecha] = useState(fechaLocalHoy());
   const [codigoBodega, setCodigoBodega] = useState('');
   const [codigoEmpleado, setCodigoEmpleado] = useState(
@@ -75,12 +76,31 @@ function DevolucionesModal({
     }
   };
 
-  const cargarBoletaSugerida = async (signal) => {
+  // Sugiere la boleta en uso del rollo para la fecha; si no hay, la siguiente libre.
+  const cargarBoletaSugerida = async (signal, fechaConsulta = fecha) => {
     try {
-      const respuesta = await fetch('/api/transacciones/devolucion/boleta-sugerida', { signal });
+      const parametros = new URLSearchParams({
+        id_rollo: rollo.id_rollo,
+        fecha: fechaConsulta
+      });
+
+      const respuesta = await fetch(
+        `/api/transacciones/devolucion/boleta-sugerida?${parametros}`,
+        { signal }
+      );
+
       if (!respuesta.ok) return;
+
       const datos = await respuesta.json();
-      if (!signal?.aborted) setBoleta(String(datos.numero_boleta || ''));
+      if (signal?.aborted) return;
+
+      setBoleta(String(datos.numero_boleta || ''));
+      setBoletaEnUso(Boolean(datos.en_uso));
+
+      // Una boleta en uso ya tiene bodega fija: se llena sola.
+      if (datos.en_uso && datos.codigo_bodega) {
+        setCodigoBodega(String(datos.codigo_bodega));
+      }
     } catch (error) {
       if (error.name !== 'AbortError') console.error('Error obteniendo boleta:', error);
     }
@@ -145,10 +165,16 @@ function DevolucionesModal({
   );
 
   const cantidadNumero = Number(cantidad);
+
   const subtotalSeleccion =
     lineaSeleccionada && Number.isFinite(cantidadNumero) && cantidadNumero > 0
       ? redondear(cantidadNumero * Number(lineaSeleccionada.precio_unitario))
       : 0;
+  
+  const subtotalCostoSeleccion =
+  lineaSeleccionada && Number.isFinite(cantidadNumero) && cantidadNumero > 0
+    ? redondear(cantidadNumero * Number(lineaSeleccionada.costo_unitario || 0))
+    : 0;
 
   const totalDevolucion = redondear(detalle.reduce((suma, item) => suma + item.subtotal, 0));
 
@@ -200,6 +226,7 @@ function DevolucionesModal({
         id_venta_detalle: lineaSeleccionada.id_venta_detalle,
         codigo_articulo: lineaSeleccionada.codigo_articulo,
         articulo: lineaSeleccionada.articulo,
+        costo_unitario: Number(lineaSeleccionada.costo_unitario || 0),
         precio_unitario: Number(lineaSeleccionada.precio_unitario),
         cantidad: cantidadNumero,
         subtotal: subtotalSeleccion,
@@ -384,6 +411,7 @@ const eliminarDelDetalle = () => {
                 <th>Fecha</th>
                 <th>Cód. artículo</th>
                 <th>Descripción</th>
+                <th>P. Costo</th>
                 <th>P. Venta</th>
                 <th>Cant.</th>
                 <th>Dev.</th>
@@ -391,9 +419,9 @@ const eliminarDelDetalle = () => {
             </thead>
             <tbody>
               {cargandoLineas ? (
-                <tr><td colSpan="7" className="sin-datos">Cargando ventas...</td></tr>
+                <tr><td colSpan="8" className="sin-datos">Cargando ventas...</td></tr>
               ) : lineasVenta.length === 0 ? (
-                <tr><td colSpan="7" className="sin-datos">Este cliente no tiene ventas activas.</td></tr>
+                <tr><td colSpan="8" className="sin-datos">Este cliente no tiene ventas activas.</td></tr>
               ) : (
                 lineasVenta.map((linea) => {
                   const devuelto = redondear(
@@ -418,6 +446,7 @@ const eliminarDelDetalle = () => {
                       <td>{mostrarFecha(linea.fecha)}</td>
                       <td>{linea.codigo_articulo}</td>
                       <td>{linea.articulo}</td>
+                      <td>{formatoMoneda(linea.costo_unitario)}</td>
                       <td>{formatoMoneda(linea.precio_unitario)}</td>
                       <td>{Number(linea.cantidad)}</td>
                       <td>{devuelto}</td>
@@ -436,10 +465,22 @@ const eliminarDelDetalle = () => {
             <label>Cód. artículo</label>
             <input type="text" readOnly value={lineaSeleccionada?.codigo_articulo || ''} />
           </div>
+
           <div className="campo-doble">
             <label>Descripción</label>
             <input type="text" readOnly value={lineaSeleccionada?.articulo || ''} />
           </div>
+
+          <div>
+            <label>P. Costo</label>
+            <input
+              type="text"
+              readOnly
+              tabIndex={-1}
+              value={lineaSeleccionada ? formatoMoneda(lineaSeleccionada.costo_unitario) : ''}
+            />
+          </div>
+
           <div>
             <label>P. Devol.</label>
             <input
@@ -448,6 +489,7 @@ const eliminarDelDetalle = () => {
               value={lineaSeleccionada ? formatoMoneda(lineaSeleccionada.precio_unitario) : ''}
             />
           </div>
+
           <div>
             <label>
               Cantidad {lineaSeleccionada ? `(máx. ${disponibleDe(lineaSeleccionada)})` : ''}
@@ -469,6 +511,17 @@ const eliminarDelDetalle = () => {
               }}
             />
           </div>
+
+          <div>
+            <label>ST. Costo</label>
+            <input
+              type="text"
+              readOnly
+              tabIndex={-1}
+              value={subtotalCostoSeleccion ? formatoMoneda(subtotalCostoSeleccion) : ''}
+            />
+          </div>
+
           <div>
             <label>ST. Venta</label>
             <input type="text" readOnly value={subtotalSeleccion ? formatoMoneda(subtotalSeleccion) : ''} />
@@ -484,7 +537,10 @@ const eliminarDelDetalle = () => {
               maxLength={20}
               value={boleta}
               placeholder="Número de boleta"
-              onChange={(e) => setBoleta(e.target.value)}
+              onChange={(e) => {
+                setBoleta(e.target.value);
+                setBoletaEnUso(false);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -492,10 +548,22 @@ const eliminarDelDetalle = () => {
                 }
               }}
             />
+            <small className={`devoluciones-boleta-ayuda ${boletaEnUso ? 'en-uso' : ''}`}>
+              {boletaEnUso
+                ? 'Boleta en uso hoy para este rollo'
+                : 'Boleta nueva (siguiente disponible)'}
+            </small>
           </div>
           <div>
             <label>Fecha</label>
-            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <input 
+              type="date" 
+              value={fecha}  
+              onChange={(e) => {
+                setFecha(e.target.value);
+                if (e.target.value) cargarBoletaSugerida(undefined, e.target.value);
+              }}
+            />
           </div>
           <div>
             <label>Cód. bodega</label>
@@ -552,6 +620,7 @@ const eliminarDelDetalle = () => {
               <tr>
                 <th>Cód. artículo</th>
                 <th>Descripción</th>
+                <th>Costo</th>
                 <th>P. Venta</th>
                 <th>Cant.</th>
                 <th>Subtotal</th>
@@ -561,7 +630,7 @@ const eliminarDelDetalle = () => {
             <tbody>
               {detalle.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="sin-datos">
+                  <td colSpan="7" className="sin-datos">
                     Seleccione un artículo arriba, digite la cantidad y presione Enter.
                   </td>
                 </tr>
@@ -577,6 +646,7 @@ const eliminarDelDetalle = () => {
                   >
                     <td>{item.codigo_articulo}</td>
                     <td>{item.articulo}</td>
+                    <td>{formatoMoneda(item.costo_unitario)}</td>
                     <td>{formatoMoneda(item.precio_unitario)}</td>
                     <td>{item.cantidad}</td>
                     <td>{formatoMoneda(item.subtotal)}</td>

@@ -91,3 +91,15 @@
   color: #6b7280;
   font-size: 0.85em;
 }
+
+.devoluciones-boleta-ayuda {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.devoluciones-boleta-ayuda.en-uso {
+  color: #1d4ed8;
+  font-weight: 700;
+}

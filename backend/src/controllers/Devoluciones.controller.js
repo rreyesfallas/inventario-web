@@ -50,6 +50,7 @@ const listarVentasClienteDevolucion = async (req, res) => {
           a.codigo       AS codigo_articulo,
           a.descripcion  AS articulo,
           vd.cantidad,
+          vd.costo_unitario,
           vd.precio_unitario,
           vd.subtotal,
           ISNULL(dev.cantidad_devuelta, 0) AS cantidad_devuelta,
@@ -83,13 +84,55 @@ const listarVentasClienteDevolucion = async (req, res) => {
 };
  
 /* ------------------------------------------------------------
-   GET /api/transacciones/devolucion/boleta-sugerida
-   Siguiente número de boleta (máximo numérico usado + 1).
+   GET /api/transacciones/devolucion/boleta-sugerida?id_rollo=5&fecha=YYYY-MM-DD
+   Sugiere la boleta "en uso": la última de ese rollo en esa fecha.
+   Si no hay ninguna, sugiere la siguiente libre (máximo + 1).
    ------------------------------------------------------------ */
 const obtenerBoletaSugerida = async (req, res) => {
+  const idRollo = Number(req.query.id_rollo);
+  const { fecha } = req.query;
+
   try {
     const pool = await getConnection();
- 
+
+    // 1. Boleta en uso para ese rollo y fecha.
+    if (esEnteroPositivo(idRollo) && esFechaValida(fecha)) {
+      const resultadoEnUso = await pool.request()
+        .input('id_rollo', sql.Int, idRollo)
+        .input('fecha', sql.Date, fecha)
+        .query(`
+          SELECT TOP 1
+            t.numero_boleta,
+            b.codigo      AS codigo_bodega,
+            b.descripcion AS bodega
+          FROM (
+            SELECT numero_boleta, id_bodega, fecha_creacion
+            FROM ventas
+            WHERE id_rollo = @id_rollo AND fecha = @fecha AND estado = 'ACTIVA'
+
+            UNION ALL
+
+            SELECT numero_boleta, id_bodega, fecha_creacion
+            FROM devoluciones
+            WHERE id_rollo = @id_rollo AND fecha = @fecha AND estado = 'A'
+          ) t
+          LEFT JOIN bodegas b ON b.id_bodega = t.id_bodega
+          ORDER BY t.fecha_creacion DESC
+        `);
+
+      if (resultadoEnUso.recordset.length > 0) {
+        const enUso = resultadoEnUso.recordset[0];
+
+        return res.json({
+          numero_boleta: enUso.numero_boleta,
+          en_uso: true,
+          codigo_bodega: enUso.codigo_bodega,
+          bodega: enUso.bodega
+        });
+      }
+    }
+
+    // 2. Siguiente boleta libre.
     const resultado = await pool.request().query(`
       SELECT ISNULL(MAX(numero), 0) + 1 AS numero_boleta
       FROM (
@@ -100,13 +143,14 @@ const obtenerBoletaSugerida = async (req, res) => {
         SELECT TRY_CAST(numero_boleta AS BIGINT) FROM devoluciones
       ) boletas
     `);
- 
+
     return res.json({
-      numero_boleta: String(resultado.recordset[0].numero_boleta)
+      numero_boleta: String(resultado.recordset[0].numero_boleta),
+      en_uso: false
     });
   } catch (error) {
     console.error('Error obteniendo boleta sugerida:', error);
- 
+
     return res.status(500).json({
       mensaje: 'Error al obtener la boleta sugerida',
       error: error.message

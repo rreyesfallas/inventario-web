@@ -211,7 +211,7 @@ function InformeCobros() {
         ['SINPE en la fecha', formatoMonedaReporte(resumen.total_sinpe)],
         ['Cobrado en la fecha', formatoMonedaReporte(resumen.total_cobrado_fecha)],
         ['Cobrado acumulado', formatoMonedaReporte(resumen.total_cobrado_acumulado)],
-        ['Saldo pendiente estimado', formatoMonedaReporte(resumen.saldo_pendiente_estimado)]
+        ['Saldo pendiente a la fecha', formatoMonedaReporte(resumen.saldo_pendiente_estimado)]
       ]
     });
 
@@ -259,7 +259,7 @@ function InformeCobros() {
       ['SINPE en la fecha', Number(resumen.total_sinpe || 0)],
       ['Cobrado en la fecha', Number(resumen.total_cobrado_fecha || 0)],
       ['Cobrado acumulado', Number(resumen.total_cobrado_acumulado || 0)],
-      ['Saldo pendiente estimado', Number(resumen.saldo_pendiente_estimado || 0)]
+      ['Saldo pendiente a la fecha', Number(resumen.saldo_pendiente_estimado || 0)]
     ];
 
     const datosDetalle = detalleClientes.map((item) => ({
@@ -842,7 +842,7 @@ function InformeCobros() {
         </div>
 
         <div className="resumen-item">
-          <span>Saldo pendiente estimado</span>
+          <span>Saldo pendiente a la fecha</span>
           <strong>{formatoMoneda(resumen.saldo_pendiente_estimado)}</strong>
         </div>
       </div>
