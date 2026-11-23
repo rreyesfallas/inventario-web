@@ -15,7 +15,22 @@ const REPORTES = [
     icono: '🗂️',
     titulo: 'Registrar tarjetas',
     descripcion: 'Digitar las tarjetas de un rollo para detectar tarjetas faltantes.'
-  }
+  },
+
+  {
+    ruta: '/reportes/estadisticas-rollos',
+    icono: '📈',
+    titulo: 'Estadísticas de rollos',
+    descripcion: 'Tarjetas activas y saldos de cada rollo de una bodega (carro).'
+  },
+
+  {
+    ruta: '/reportes/ventas-carro',
+    icono: '🚚',
+    titulo: 'Ventas / Devoluciones por carro',
+    descripcion: 'Ventas y devoluciones por boleta de un carro en un rango de fechas.'
+  },
+  
 ];
 
 function Reportes() {

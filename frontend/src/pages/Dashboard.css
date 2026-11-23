@@ -242,3 +242,77 @@
     grid-template-columns: 1fr;
   }
 } 
+
+/* =====================================
+   ÍCONOS CON COLOR POR MÓDULO
+===================================== */
+
+.dashboard-card .dashboard-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  font-size: 30px;
+  color: var(--color-modulo, #2563eb);
+  /* Fondo suave del mismo color del módulo */
+  background: color-mix(in srgb, var(--color-modulo, #2563eb) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--color-modulo, #2563eb) 22%, white);
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-card .dashboard-icon svg {
+  stroke-width: 1.8;
+}
+
+/* Al pasar el mouse: el ícono se llena con el color del módulo */
+.dashboard-card:hover .dashboard-icon {
+  background: var(--color-modulo, #2563eb);
+  color: #ffffff;
+  transform: scale(1.06) rotate(-3deg);
+}
+
+/* Línea de color en el borde izquierdo de la tarjeta */
+.dashboard-card {
+  border-left: 4px solid var(--color-modulo, #2563eb) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--color-modulo, #2563eb) 18%, transparent);
+}
+
+/* =====================================
+   ÍCONOS EN LAS TARJETAS DE RESUMEN
+===================================== */
+
+.resumen-card {
+  position: relative;
+  overflow: hidden;
+  border-top: 3px solid var(--color-modulo, #2563eb) !important;
+}
+
+.resumen-card-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 10px;
+  border-radius: 12px;
+  font-size: 23px;
+  color: var(--color-modulo, #2563eb);
+  background: color-mix(in srgb, var(--color-modulo, #2563eb) 12%, white);
+}
+
+.resumen-card-icono svg {
+  stroke-width: 1.8;
+}
+
+/* El número toma un toque del color de la tarjeta */
+.resumen-card strong {
+  color: color-mix(in srgb, var(--color-modulo, #0f172a) 35%, #0f172a);
+}

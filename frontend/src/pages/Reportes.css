@@ -329,4 +329,22 @@
     padding: 5px 6px;
   }
 }
+
+
+/* Parámetros con 5 elementos (bodega + nombre + desde + hasta + botón) */
+.reportes-parametros.reportes-parametros-5 {
+  grid-template-columns: 1fr 1.5fr 1fr 1fr 1fr;
+}
+
+@media (max-width: 900px) {
+  .reportes-parametros.reportes-parametros-5 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .reportes-parametros.reportes-parametros-5 {
+    grid-template-columns: 1fr;
+  }
+}
  

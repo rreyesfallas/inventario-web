@@ -400,3 +400,158 @@ tbody tr:hover {
     border-radius: 0;
   }
 }
+
+
+/* =====================================
+   ENCABEZADO DEL CLIENTE
+===================================== */
+
+.historial-cliente-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 2fr 2.5fr 1.2fr 1.2fr;
+  gap: 14px;
+  align-items: end;
+}
+
+.historial-cliente-grid label {
+  display: block;
+  margin-bottom: 7px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #374151;
+  text-align: left;
+}
+
+.historial-cliente-grid input {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 15px;
+  color: #111827;
+  outline: none;
+}
+
+.historial-cliente-grid input[readonly] {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.historial-codigo-fila {
+  display: flex;
+  gap: 8px;
+}
+
+.historial-codigo-fila .btn-vista {
+  white-space: nowrap;
+  padding: 0 14px;
+}
+
+.historial-input-codigo {
+  font-size: 18px !important;
+  font-weight: 800;
+  border: 2px solid #2563eb !important;
+}
+
+.historial-saldo {
+  font-weight: 800;
+  color: #b91c1c !important;
+  text-align: right;
+}
+
+/* =====================================
+   BARRA DE BÚSQUEDA Y ACCIONES
+===================================== */
+
+.historial-barra {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.historial-barra .buscar {
+  flex: 1;
+  min-width: 260px;
+  margin-bottom: 0;
+}
+
+.historial-barra .acciones-reporte {
+  margin: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border: none;
+}
+
+.historial-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #374151;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* =====================================
+   TABLA DEL HISTORIAL
+===================================== */
+
+.historial-tabla td {
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
+.historial-celda-texto {
+  text-align: left !important;
+}
+
+.historial-celda-monto {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.historial-celda-saldo {
+  font-weight: 700;
+}
+
+.historial-fila-sin-monto td {
+  color: #94a3b8;
+}
+
+/* Etiqueta de color por tipo de movimiento */
+.historial-mov {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mov-abono      { background: #dcfce7; color: #166534; }
+.mov-venta      { background: #dbeafe; color: #1e40af; }
+.mov-devolucion { background: #ffedd5; color: #9a3412; }
+.mov-eliminada  { background: #fee2e2; color: #991b1b; }
+.mov-sin-monto  { background: #f1f5f9; color: #64748b; }
+
+@media (max-width: 1100px) {
+  .historial-cliente-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .historial-cliente-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+}

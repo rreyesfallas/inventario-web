@@ -2,17 +2,26 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
-  FaBoxes,
-  FaUsers,
-  FaUserTie,
-  FaMoneyBillWave,
-  FaExchangeAlt,
-  FaFileInvoiceDollar,
-  FaSignInAlt,
-  FaHistory,
-  FaUserCog,
-  FaChartBar
-} from 'react-icons/fa';
+  TbPackage,
+  TbUsers,
+  TbBriefcase,
+  TbCash,
+  TbArrowsExchange,
+  TbReceipt2,
+  TbChartBar,
+  TbTruckDelivery,
+  TbClipboardCheck,
+  TbHistory,
+  TbUserCog,
+  TbSettings,
+  TbWallet,
+  TbCoins,
+  TbBuildingWarehouse
+} from 'react-icons/tb';
+
+import{ FaChartBar,
+  FaClipboardCheck
+} from 'react-icons/fa'
 
 import './Dashboard.css';
 
@@ -37,72 +46,99 @@ function Dashboard() {
     navigate('/login');
   };
 
-  const opciones = [
+    const opciones = [
     {
       titulo: 'Artículos',
       descripcion: 'Gestión de productos del inventario',
-      icono: <FaBoxes />,
+      icono: <TbPackage />,
+      color: '#2563eb',
       ruta: '/articulos'
     },
+
     {
       titulo: 'Clientes',
       descripcion: 'Registro y consulta de clientes',
-      icono: <FaUsers />,
+      icono: <TbUsers />,
+      color: '#0891b2',
       ruta: '/clientes'
     },
+
     {
       titulo: 'Empleados',
       descripcion: 'Administración de empleados',
-      icono: <FaUserTie />,
+      icono: <TbBriefcase />,
+      color: '#7c3aed',
       ruta: '/empleados'
     },
+    
     {
       titulo: 'Efectivo',
       descripcion: 'Control de movimientos de efectivo',
-      icono: <FaMoneyBillWave />,
+      icono: <TbCash />,
+      color: '#16a34a',
       ruta: '/efectivo'
     },
+
     {
       titulo: 'Transacciones',
-      descripcion: 'Consulta de operaciones realizadas',
-      icono: <FaExchangeAlt />,
+      descripcion: 'Abonos, ventas, devoluciones y más',
+      icono: <TbArrowsExchange />,
+      color: '#ea580c',
       ruta: '/transacciones'
     },
+
     {
       titulo: 'Informe Cobros',
-      descripcion: 'Reportes de cobros y pagos',
-      icono: <FaFileInvoiceDollar />,
+      descripcion: 'Cobros, abonos y tarjetas por rollo',
+      icono: <TbReceipt2 />,
+      color: '#0d9488',
       ruta: '/informe-cobros'
     },
 
     {
       titulo: 'Reportes',
-      descripcion: 'Desempeño de empleados y otros reportes',
-      icono: <FaChartBar />,
+      descripcion: 'Desempeño, estadísticas y más',
+      icono: <TbChartBar />,
+      color: '#db2777',
       ruta: '/reportes'
     },
+
     {
       titulo: 'Entradas / Salidas',
       descripcion: 'Movimientos de inventario',
-      icono: <FaSignInAlt />,
+      icono: <TbTruckDelivery />,
+      color: '#ca8a04',
       ruta: '/entradas-salidas'
     },
+
+    {
+      titulo: 'Inventarios',
+      descripcion: 'Toma física y resultado de inventario',
+      icono: <FaClipboardCheck />,
+      ruta: '/inventarios'
+    },
+
     {
       titulo: 'Historial Clientes',
       descripcion: 'Historial de compras y movimientos',
-      icono: <FaHistory />,
+      icono: <TbHistory />,
+      color: '#0284c7',
       ruta: '/historial-clientes'
     },
+
     {
       titulo: 'Usuarios',
       descripcion: 'Accesos y configuración de usuarios',
-      icono: <FaUserCog />,
+      icono: <TbUserCog />,
+      color: '#475569',
       ruta: '/usuarios'
     },
+
     {
       titulo: 'Configuración',
-      descripcion: 'Catálogos generales del sistema',
-      icono: '⚙️',
+      descripcion: 'Rollos, vehículos, líneas y bodegas',
+      icono: <TbSettings />,
+      color: '#64748b',
       ruta: '/configuracion'
     }
   ];
@@ -154,6 +190,45 @@ function Dashboard() {
     })}`;
   };
 
+    const tarjetasResumen = [
+    {
+      titulo: 'Clientes activos',
+      valor: resumen.clientesActivos,
+      icono: <TbUsers />,
+      color: '#0891b2'
+    },
+    {
+      titulo: 'Artículos activos',
+      valor: resumen.articulosActivos,
+      icono: <TbPackage />,
+      color: '#2563eb'
+    },
+    {
+      titulo: 'Saldo pendiente',
+      valor: formatoMoneda(resumen.saldoPendiente),
+      icono: <TbWallet />,
+      color: '#dc2626'
+    },
+    {
+      titulo: 'Cobros de hoy',
+      valor: formatoMoneda(resumen.cobrosHoy),
+      icono: <TbCoins />,
+      color: '#16a34a'
+    },
+    {
+      titulo: 'Movimientos inventario hoy',
+      valor: resumen.movimientosInventarioHoy,
+      icono: <TbBuildingWarehouse />,
+      color: '#ca8a04'
+    },
+    {
+      titulo: 'Transacciones hoy',
+      valor: resumen.transaccionesHoy,
+      icono: <TbArrowsExchange />,
+      color: '#ea580c'
+    }
+  ];
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -175,35 +250,17 @@ function Dashboard() {
         </section>
 
         <section className="dashboard-resumen">
-          <div className="resumen-card">
-            <span>Clientes activos</span>
-            <strong>{resumen.clientesActivos}</strong>
-          </div>
-
-          <div className="resumen-card">
-            <span>Artículos activos</span>
-            <strong>{resumen.articulosActivos}</strong>
-          </div>
-
-          <div className="resumen-card">
-            <span>Saldo pendiente</span>
-            <strong>{formatoMoneda(resumen.saldoPendiente)}</strong>
-          </div>
-
-          <div className="resumen-card">
-            <span>Cobros de hoy</span>
-            <strong>{formatoMoneda(resumen.cobrosHoy)}</strong>
-          </div>
-
-          <div className="resumen-card">
-            <span>Movimientos inventario hoy</span>
-            <strong>{resumen.movimientosInventarioHoy}</strong>
-          </div>
-
-          <div className="resumen-card">
-            <span>Transacciones hoy</span>
-            <strong>{resumen.transaccionesHoy}</strong>
-          </div>
+          {tarjetasResumen.map((tarjeta) => (
+            <div
+              key={tarjeta.titulo}
+              className="resumen-card"
+              style={{ '--color-modulo': tarjeta.color }}
+            >
+              <div className="resumen-card-icono">{tarjeta.icono}</div>
+              <span>{tarjeta.titulo}</span>
+              <strong>{tarjeta.valor}</strong>
+            </div>
+          ))}
         </section>
 
         <section className="dashboard-menu">
@@ -211,6 +268,7 @@ function Dashboard() {
             <button
               key={opcion.titulo}
               className="dashboard-card"
+              style={{ '--color-modulo': opcion.color }}
               onClick={() => abrirOpcion(opcion.ruta)}
             >
               <div className="dashboard-icon">

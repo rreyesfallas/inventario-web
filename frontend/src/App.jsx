@@ -21,6 +21,11 @@ import Ventas from './pages/Ventas';
 import Reportes from './pages/Reportes';
 import ReporteDesempenoEmpleados from './pages/ReporteDesempenoEmpleados';
 import RegistrarTarjetas from './pages/RegistrarTarjetas';
+import ReporteEstadisticasRollos from './pages/ReporteEstadisticasRollos';
+import ReporteVentasCarro from './pages/ReporteVentasCarro';
+import Inventarios from './pages/Inventarios';
+import IngresarTomaFisica from './pages/IngresarTomaFisica';
+import ReporteResultadoInventario from './pages/ReporteResultadoInventario';
 
 function App() {
   return (
@@ -128,6 +133,24 @@ function App() {
       />
 
       <Route
+        path="/reportes/estadisticas-rollos"
+        element={
+          <RutaProtegida>
+            <ReporteEstadisticasRollos />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/reportes/ventas-carro"
+        element={
+          <RutaProtegida>
+            <ReporteVentasCarro />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
         path="/entradas-salidas"
         element={
           <RutaProtegida>
@@ -204,6 +227,33 @@ function App() {
         element={
           <RutaProtegida> 
             <CambiarClave />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/inventarios"
+        element={
+          <RutaProtegida>
+            <Inventarios />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/inventarios/toma-fisica"
+        element={
+          <RutaProtegida>
+            <IngresarTomaFisica />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/inventarios/resultado"
+        element={
+          <RutaProtegida>
+            <ReporteResultadoInventario />
           </RutaProtegida>
         }
       />

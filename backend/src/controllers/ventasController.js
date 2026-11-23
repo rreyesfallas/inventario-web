@@ -353,6 +353,7 @@ const registrarVenta = async (req, res) => {
       .input('monto', sql.Decimal(14, 2), totalVenta)
       .input('saldo_anterior', sql.Decimal(14, 2), saldoAnterior)
       .input('saldo_nuevo', sql.Decimal(14, 2), saldoNuevo)
+      .input('id_venta', sql.Int, idVenta)
       .input(
         'observacion',
         sql.VarChar(500),
@@ -362,11 +363,11 @@ const registrarVenta = async (req, res) => {
       )
       .query(`
         INSERT INTO movimientos_cliente (
-          id_cliente, id_rollo, id_empleado, fecha, tipo_movimiento,
+          id_cliente, id_rollo, id_empleado, id_venta, fecha, tipo_movimiento,
           monto, saldo_anterior, saldo_nuevo, observacion
         )
         VALUES (
-          @id_cliente, @id_rollo, @id_empleado, @fecha, 'VENTA',
+          @id_cliente, @id_rollo, @id_empleado, @id_venta, @fecha, 'VENTA',
           @monto, @saldo_anterior, @saldo_nuevo, @observacion
         )
       `);
@@ -563,13 +564,14 @@ const eliminarVenta = async (req, res) => {
       .input('saldo_anterior', sql.Decimal(14, 2), saldoAnterior)
       .input('saldo_nuevo', sql.Decimal(14, 2), saldoNuevo)
       .input('observacion', sql.VarChar(500), `ELIMINACION DE VENTA BOLETA ${venta.numero_boleta}`)
+      .input('id_venta', sql.Int, idVenta)
       .query(`
         INSERT INTO movimientos_cliente (
-          id_cliente, id_rollo, id_empleado, fecha, tipo_movimiento,
+          id_cliente, id_rollo, id_empleado, id_venta, fecha, tipo_movimiento,
           monto, saldo_anterior, saldo_nuevo, observacion
         )
         VALUES (
-          @id_cliente, @id_rollo, @id_empleado, @fecha, 'ELIMINACION_VENTA',
+          @id_cliente, @id_rollo, @id_empleado, @id_venta, @fecha, 'ELIMINACION_VENTA',
           @monto, @saldo_anterior, @saldo_nuevo, @observacion
         )
       `);
