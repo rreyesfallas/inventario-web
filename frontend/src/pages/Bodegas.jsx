@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Bodegas.css';
 
@@ -10,6 +10,16 @@ function Bodegas() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modoModal, setModoModal] = useState('agregar');
   const [bodegaSeleccionada, setBodegaSeleccionada] = useState('');
+
+  const codigoRef = useRef(null);
+  const descripcionRef = useRef(null);
+
+  // Al abrir el modal, el cursor queda en el primer campo.
+  useEffect(() => {
+    if (modalAbierto) {
+      setTimeout(() => codigoRef.current?.focus(), 0);
+    }
+  }, [modalAbierto]);
 
   const [bodega, setBodega] = useState({
     codigo: '',
@@ -234,9 +244,16 @@ function Bodegas() {
                 <label>Código</label>
                 <input
                   type="text"
+                  ref={codigoRef}
                   name="codigo"
                   value={bodega.codigo}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      descripcionRef.current?.focus();
+                    }
+                  }}
                 />
               </div>
 
@@ -244,9 +261,16 @@ function Bodegas() {
                 <label>Descripción</label>
                 <input
                   type="text"
+                  ref={descripcionRef}
                   name="descripcion"
                   value={bodega.descripcion}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      guardarBodega();
+                    }
+                  }}
                 />
               </div>
             </div>

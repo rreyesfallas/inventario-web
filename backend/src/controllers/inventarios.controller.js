@@ -379,10 +379,86 @@ const reporteResultadoInventario = async (req, res) => {
   }
 };
 
+/* ------------------------------------------------------------
+   GET /api/inventarios/existencias?id_bodega=
+   Reporte de existencias según bodega (hoja para la toma física).
+   Trae TODOS los artículos activos; los que no tienen registro
+   en la bodega salen con existencia 0, como el sistema anterior.
+   ------------------------------------------------------------ */
+const reporteExistenciasBodega = async (req, res) => {
+  const idBodega = Number(req.query.id_bodega);
+
+  if (!esEnteroPositivo(idBodega)) {
+    return res.status(400).json({ mensaje: 'Debe indicar una bodega válida' });
+  }
+
+  try {
+    const pool = await getConnection();
+
+    const resultado = await pool.request()
+      .input('id_bodega', sql.Int, idBodega)
+      .query(`
+        SELECT id_bodega, codigo, descripcion
+        FROM bodegas
+        WHERE id_bodega = @id_bodega;
+
+        SELECT
+          a.id_articulo,
+          a.codigo,
+          a.descripcion,
+          a.precio,
+          ISNULL(e.existencia, 0) AS existencia,
+          a.precio * ISNULL(e.existencia, 0) AS subtotal,
+          a.id_linea,
+          l.descripcion AS linea
+        FROM articulos a
+        LEFT JOIN existencias_bodega e
+          ON e.id_articulo = a.id_articulo
+         AND e.id_bodega = @id_bodega
+        LEFT JOIN lineas_articulo l
+          ON l.id_linea = a.id_linea
+        WHERE a.estado = 'A'
+        ORDER BY TRY_CAST(a.codigo AS BIGINT), a.codigo;
+      `);
+
+    const [bodegas, filas] = resultado.recordsets;
+
+    if (bodegas.length === 0) {
+      return res.status(404).json({ mensaje: 'La bodega no existe' });
+    }
+
+    const articulos = filas.map((fila) => ({
+      ...fila,
+      precio: Number(fila.precio || 0),
+      existencia: Number(fila.existencia || 0),
+      subtotal: redondear(fila.subtotal || 0)
+    }));
+
+    return res.json({
+      bodega: bodegas[0],
+      articulos,
+      totales: {
+        articulos: articulos.length,
+        con_existencia: articulos.filter((item) => item.existencia !== 0).length,
+        existencia: redondear(articulos.reduce((suma, item) => suma + item.existencia, 0)),
+        subtotal: redondear(articulos.reduce((suma, item) => suma + item.subtotal, 0))
+      }
+    });
+  } catch (error) {
+    console.error('Error generando existencias según bodega:', error);
+
+    return res.status(500).json({
+      mensaje: 'Error al generar el reporte de existencias',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   buscarArticuloToma,
   listarTomasPendientes,
   registrarToma,
   anularToma,
-  reporteResultadoInventario
+  reporteResultadoInventario,
+  reporteExistenciasBodega
 };

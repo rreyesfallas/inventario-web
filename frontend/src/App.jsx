@@ -26,6 +26,7 @@ import ReporteVentasCarro from './pages/ReporteVentasCarro';
 import Inventarios from './pages/Inventarios';
 import IngresarTomaFisica from './pages/IngresarTomaFisica';
 import ReporteResultadoInventario from './pages/ReporteResultadoInventario';
+import ReporteExistenciasBodega from './pages/ReporteExistenciasBodega';
 
 function App() {
   return (
@@ -254,6 +255,15 @@ function App() {
         element={
           <RutaProtegida>
             <ReporteResultadoInventario />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/inventarios/existencias"
+        element={
+          <RutaProtegida>
+            <ReporteExistenciasBodega />
           </RutaProtegida>
         }
       />

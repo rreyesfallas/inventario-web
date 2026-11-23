@@ -170,3 +170,48 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== Existencias según bodega ===== */
+.inventario-select {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 15px;
+  color: #111827;
+  background: white;
+  outline: none;
+}
+
+.inventario-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+
+.inventario-check-parametro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 0 !important;
+  cursor: pointer;
+}
+
+/* Raya para anotar a mano la toma física */
+.inventario-raya-toma {
+  display: inline-block;
+  width: 70px;
+  border-bottom: 1px solid #64748b;
+  height: 14px;
+}
+
+.inventario-grid-existencias {
+  grid-template-columns: 0.8fr 2fr 1.6fr 1fr;
+}
+
+@media (max-width: 800px) {
+  .inventario-grid-existencias {
+    grid-template-columns: 1fr;
+  }
+}

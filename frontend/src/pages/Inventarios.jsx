@@ -5,12 +5,18 @@ import './Reportes.css';
 // basta con sumar un elemento a esta lista y registrar su ruta en el router.
 const OPCIONES = [
   {
+    ruta: '/inventarios/existencias',
+    icono: '📦',
+    titulo: 'Existencias según bodega',
+    descripcion: 'Hoja con la existencia de cada artículo y espacio para anotar la toma física.'
+  },
+  {
     ruta: '/inventarios/toma-fisica',
     icono: '📝',
     titulo: 'Ingresar toma física',
     descripcion: 'Digitar lo que realmente se contó de cada artículo en una bodega.'
   },
-  {
+  { 
     ruta: '/inventarios/resultado',
     icono: '📋',
     titulo: 'Resultado de inventario',

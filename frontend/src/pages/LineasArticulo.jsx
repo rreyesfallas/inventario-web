@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LineasArticulo.css';
 
@@ -10,6 +10,15 @@ function LineasArticulo() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modoModal, setModoModal] = useState('agregar');
   const [lineaSeleccionada, setLineaSeleccionada] = useState('');
+
+  const descripcionRef = useRef(null);
+
+  // Al abrir el modal, el cursor queda en la descripción.
+  useEffect(() => {
+    if (modalAbierto) {
+      setTimeout(() => descripcionRef.current?.focus(), 0);
+    }
+  }, [modalAbierto]);
 
   const [linea, setLinea] = useState({
     descripcion: ''
@@ -226,9 +235,16 @@ function LineasArticulo() {
                 <label>Descripción</label>
                 <input
                   type="text"
+                  ref={descripcionRef}
                   name="descripcion"
                   value={linea.descripcion}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      guardarLinea();
+                    }
+                  }}
                 />
               </div>
             </div>

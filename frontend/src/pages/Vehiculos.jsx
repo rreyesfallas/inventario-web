@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Vehiculos.css';
 
@@ -11,6 +11,17 @@ function Vehiculos() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modoModal, setModoModal] = useState('agregar');
   const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState('');
+
+  const codigoRef = useRef(null);
+  const empleadoRef = useRef(null);
+  const descripcionRef = useRef(null);
+
+  // Al abrir el modal, el cursor queda en el primer campo.
+  useEffect(() => {
+    if (modalAbierto) {
+      setTimeout(() => codigoRef.current?.focus(), 0);
+    }
+  }, [modalAbierto]);
 
   const [vehiculo, setVehiculo] = useState({
     codigo: '',
@@ -252,18 +263,32 @@ function Vehiculos() {
                 <label>Código</label>
                 <input
                   type="text"
+                  ref={codigoRef}
                   name="codigo"
                   value={vehiculo.codigo}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      empleadoRef.current?.focus();
+                    }
+                  }}
                 />
               </div>
 
               <div>
                 <label>Empleado asignado</label>
                 <select
+                  ref={empleadoRef}
                   name="id_empleado"
                   value={vehiculo.id_empleado}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      descripcionRef.current?.focus();
+                    }
+                  }}
                 >
                   <option value="">Sin asignar</option>
 
@@ -279,9 +304,16 @@ function Vehiculos() {
                 <label>Descripción</label>
                 <input
                   type="text"
+                  ref={descripcionRef}
                   name="descripcion"
                   value={vehiculo.descripcion}
                   onChange={cambiarDato}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      guardarVehiculo();
+                    }
+                  }}
                 />
               </div>
             </div>
