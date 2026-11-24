@@ -16,17 +16,21 @@ const { randomUUID } = require('crypto');
       observacion
     } = req.body;
 
-    if (!id_cliente || !id_rollo || !id_empleado || !fecha || !monto) {
+    if (!id_cliente || !id_rollo || !id_empleado || !fecha) {
       return res.status(400).json({
-        mensaje: 'Cliente, rollo, empleado, fecha y monto son obligatorios'
+        mensaje: 'Cliente, rollo, empleado y fecha son obligatorios'
       });
     }
 
-    const montoAbono = Number(monto);
+    // Monto vacío = 0 (el cliente se visitó pero no abonó).
+    const montoAbono =
+      monto === undefined || monto === null || String(monto).trim() === ''
+        ? 0
+        : Number(monto);
 
-    if (montoAbono <= 0) {
+    if (!Number.isFinite(montoAbono) || montoAbono < 0) {
       return res.status(400).json({
-        mensaje: 'El monto del abono debe ser mayor a cero'
+        mensaje: 'El monto del abono no puede ser negativo'
       });
     }
 
@@ -125,6 +129,48 @@ const { randomUUID } = require('crypto');
                 mensaje: 'El empleado no existe o está inactivo'
             });
         }
+    }
+
+
+        // Abono en 0: no se crea un movimiento, se registra la tarjeta del día
+    // (sale como "SIN MONTO" en el historial del cliente).
+    if (montoAbono === 0) {
+      const resultadoTarjeta = await new sql.Request(transaction)
+        .input('id_rollo', sql.Int, idRolloFinal)
+        .input('id_cliente', sql.Int, Number(id_cliente))
+        .input('fecha', sql.Date, fecha)
+        .input('saldo', sql.Decimal(14, 2), saldoAnterior)
+        .query(`
+          IF EXISTS (
+            SELECT 1 FROM tarjetas_registradas
+            WHERE id_rollo = @id_rollo
+              AND id_cliente = @id_cliente
+              AND fecha = @fecha
+              AND estado = 'A'
+          )
+            SELECT CAST(0 AS BIT) AS nueva;
+          ELSE
+          BEGIN
+            INSERT INTO tarjetas_registradas (id_rollo, id_cliente, fecha, saldo_registrado)
+            VALUES (@id_rollo, @id_cliente, @fecha, @saldo);
+            SELECT CAST(1 AS BIT) AS nueva;
+          END
+        `);
+
+      await transaction.commit();
+
+      const nueva = Boolean(resultadoTarjeta.recordset[0]?.nueva);
+
+      return res.status(201).json({
+        mensaje: nueva
+          ? 'Cliente registrado sin abono (₡0)'
+          : 'Este cliente ya estaba registrado sin abono en esa fecha',
+        cliente: cliente.nombre,
+        saldo_anterior: saldoAnterior,
+        monto: 0,
+        saldo_nuevo: saldoAnterior,
+        sin_monto: true
+      });
     }
 
 

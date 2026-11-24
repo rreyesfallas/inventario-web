@@ -772,28 +772,26 @@ function Transacciones() {
 
 
 
-    if (!transaccion.fecha || !transaccion.monto) {
+    // En abonos, el monto vacío cuenta como 0 (cliente visitado que no abonó).
+    const montoVacio = String(transaccion.monto ?? '').trim() === '';
 
+    if (!transaccion.fecha || (montoVacio && transaccion.tipo !== 'ABONO')) {
       alert('Fecha y monto son obligatorios');
-
       return;
-
     }
 
+    const monto = montoVacio ? 0 : Number(transaccion.monto);
 
+    if (!Number.isFinite(monto) || monto < 0) {
+      alert('El monto no puede ser negativo');
+      montoRef.current?.focus();
+      return;
+    }
 
-    const monto = Number(transaccion.monto);
-
-
-
-    if (monto <= 0) {
-
+    if (monto === 0 && transaccion.tipo !== 'ABONO') {
       alert('El monto debe ser mayor a cero');
-
       return;
-
     }
-
 
 
     const saldoActual = Number(clienteSeleccionado.saldo_actual || 0);
@@ -871,7 +869,7 @@ function Transacciones() {
 
           fecha: transaccion.fecha,
 
-          monto: transaccion.monto,
+          monto,
 
           observacion: transaccion.observacion
 
