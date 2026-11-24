@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Usuarios.css';
 
@@ -20,6 +20,12 @@ function Usuarios() {
     password: '',
     nivel: 'ADMIN'
   });
+
+  // Navegación con Enter dentro del formulario.
+  const formRef = useRef(null);
+  const nombreRef = useRef(null);
+  const passwordRef = useRef(null);
+  const nivelRef = useRef(null);
 
   const [mostrarModalClave, setMostrarModalClave] = useState(false);
   const [usuarioClave, setUsuarioClave] = useState(null);
@@ -335,25 +341,39 @@ function Usuarios() {
                 : 'Modificar usuario'}
             </h3>
 
-            <form onSubmit={guardarUsuario}>
+            <form ref={formRef} onSubmit={guardarUsuario}>
               <div className="form-grid">
                 <div>
                   <label>Usuario</label>
                   <input
+                    autoFocus
                     type="text"
                     name="login"
                     value={usuario.login}
                     onChange={cambiarDato}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        nombreRef.current?.focus();
+                      }
+                    }}
                   />
                 </div>
 
                 <div>
                   <label>Nombre</label>
                   <input
+                    ref={nombreRef}
                     type="text"
                     name="nombre"
                     value={usuario.nombre}
                     onChange={cambiarDato}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        (modoModal === 'agregar' ? passwordRef : nivelRef).current?.focus();
+                      }
+                    }}
                   />
                 </div>
 
@@ -361,10 +381,17 @@ function Usuarios() {
                   <div>
                     <label>Contraseña temporal</label>
                     <input
+                      ref={passwordRef}
                       type="password"
                       name="password"
                       value={usuario.password}
                       onChange={cambiarDato}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        nivelRef.current?.focus();
+                      }
+                    }}
                     />
                   </div>
                 )}
@@ -372,9 +399,16 @@ function Usuarios() {
                 <div>
                   <label>Nivel</label>
                   <select
+                    ref={nivelRef}
                     name="nivel"
                     value={usuario.nivel}
                     onChange={cambiarDato}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        formRef.current?.requestSubmit();
+                      }
+                    }}
                   >
                     <option value="ADMIN">ADMIN</option>
                   </select>
@@ -413,6 +447,7 @@ function Usuarios() {
                 <div>
                   <label>Nueva contraseña temporal</label>
                   <input
+                    autoFocus
                     type="password"
                     value={nuevaClave}
                     onChange={(e) => setNuevaClave(e.target.value)}
